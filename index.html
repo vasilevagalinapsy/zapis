@@ -1,0 +1,2721 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f3f6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161c" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Инструкция">
+<meta name="robots" content="noindex">
+<title>Инструкция ко мне — запись</title>
+<style>
+  :root {
+    --ground: #eef0f4;
+    --card: #ffffff;
+    --ink: #151d27;
+    --ink-2: #4a5566;
+    --muted: #7e8794;
+    --rule: #dde2e9;
+    --rule-soft: #eef1f5;
+    --accent: #2f4b7c;
+    --accent-ink: #ffffff;
+    --accent-soft: #e9eff8;
+    --clay: #94553a;
+    --clay-soft: #f8eee9;
+    --shadow: 0 1px 2px rgba(21,29,39,.05), 0 6px 20px rgba(21,29,39,.06);
+
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --r-sm: 8px;
+    --r-md: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0f1319; --card: #191f28; --ink: #e6eaef; --ink-2: #aeb8c5; --muted: #7b8593;
+      --rule: #2c3540; --rule-soft: #222a34; --accent: #90b0e0; --accent-ink: #0d1117;
+      --accent-soft: #1e2836; --clay: #d09878; --clay-soft: #261d16;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 20px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0f1319; --card: #191f28; --ink: #e6eaef; --ink-2: #aeb8c5; --muted: #7b8593;
+    --rule: #2c3540; --rule-soft: #222a34; --accent: #90b0e0; --accent-ink: #0d1117;
+    --accent-soft: #1e2836; --clay: #d09878; --clay-soft: #261d16;
+    --shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 20px rgba(0,0,0,.28);
+  }
+  :root[data-theme="light"] {
+    --ground: #eef0f4; --card: #ffffff; --ink: #151d27; --ink-2: #4a5566; --muted: #7e8794;
+    --rule: #dde2e9; --rule-soft: #eef1f5; --accent: #2f4b7c; --accent-ink: #ffffff;
+    --accent-soft: #e9eff8; --clay: #94553a; --clay-soft: #f8eee9;
+    --shadow: 0 1px 2px rgba(21,29,39,.05), 0 6px 20px rgba(21,29,39,.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Иначе display:flex у карточек перебивает встроенное скрытие,
+     и всё, что должно появляться по дням, видно с первого дня. */
+  [hidden] { display: none !important; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+
+  .app {
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 26px 16px 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* --- шапка --- */
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .brand {
+    font-family: var(--serif); font-size: 16px; color: var(--ink);
+    letter-spacing: .01em;
+  }
+  .stamp {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .top p { color: var(--ink-2); font-size: 15.5px; }
+
+  /* Вопрос — самый крупный текст экрана: он про то, что делать сейчас */
+  .ask-title {
+    font-family: var(--serif); font-size: 27px; font-weight: 400;
+    line-height: 1.22; text-wrap: balance; letter-spacing: -.01em;
+    margin: 2px 0 -6px;
+  }
+
+  /* Иерархия под вопросом: сначала «сразу», потом «по сигналу» */
+  .ask-note { margin: 12px 0 -2px; max-width: 46ch; }
+
+  /* --- слот записи --- */
+  .slot {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: border-color .15s ease;
+  }
+  .slot.active { border-color: var(--accent); }
+
+  .slot-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 15px 16px; width: 100%;
+    background: none; border: 0; text-align: left;
+    font: inherit; color: inherit; cursor: pointer;
+  }
+  .slot-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .slot-n {
+    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--rule-soft); color: var(--muted);
+    font-family: var(--mono); font-size: 12px;
+    display: grid; place-items: center;
+  }
+  .slot.filled .slot-n { background: var(--accent); color: var(--accent-ink); }
+  .slot-title { flex: 1; min-width: 0; font-size: 16px; line-height: 1.35; }
+  .slot-title b { font-weight: 600; }
+  .slot-title span {
+    display: block; color: var(--muted); font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chev { flex: none; color: var(--muted); font-size: 12.5px; }
+
+  .slot-body { padding: 2px 16px 18px; display: flex; flex-direction: column; gap: 16px; }
+  .slot-body > .btn { width: 100%; }
+  .slot-body[hidden] { display: none; }
+
+  /* --- выбор раздела --- */
+  .ask { font-size: 14px; color: var(--muted); }
+  .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .chip {
+    min-height: 54px; padding: 10px 12px;
+    background: var(--card); color: var(--ink);
+    border: 1px solid var(--rule); border-radius: var(--r-sm);
+    font: inherit; font-size: 15px; line-height: 1.25; text-align: left; cursor: pointer;
+    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+    transition: background .12s ease, color .12s ease;
+  }
+  .chip small { color: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .02em; }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .chip[aria-pressed="true"] small { color: var(--accent-ink); opacity: .7; }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Разделов нечётное число, поэтому последний обычный занимает всю строку —
+     иначе в сетке остаётся дыра рядом с ним */
+  .chip:nth-child(odd):nth-last-child(2) { grid-column: 1 / -1; }
+
+  .chip.wide {
+    grid-column: 1 / -1; min-height: 46px;
+    background: none; border: 1px dashed var(--rule); color: var(--ink-2);
+  }
+  .chip.wide[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-style: solid; }
+
+  /* --- поля --- */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 600; letter-spacing: .01em; color: var(--ink-2); }
+  .field .tip { font-size: 13px; color: var(--muted); margin-top: -2px; }
+  textarea {
+    font: inherit; font-size: 17px; line-height: 1.45; color: var(--ink);
+    background: var(--ground); border: 1px solid transparent; border-radius: var(--r-sm);
+    padding: 12px 13px; resize: none; overflow: hidden; min-height: 48px; width: 100%;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); background: var(--card); }
+  textarea::placeholder { color: var(--muted); }
+
+  .btn {
+    min-height: 50px; padding: 13px 18px;
+    background: var(--accent); color: var(--accent-ink);
+    border: 1px solid var(--accent); border-radius: var(--r-sm);
+    font: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
+    transition: opacity .12s ease;
+  }
+  .btn:active { opacity: .85; }
+  .btn[disabled] { background: var(--rule); border-color: var(--rule); color: var(--muted); cursor: default; }
+  .btn.ghost { background: var(--card); color: var(--accent); border-color: var(--rule); font-weight: 500; }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .linklike {
+    background: none; border: 0; padding: 2px 0; cursor: pointer;
+    font: inherit; font-size: 14px; color: var(--accent); text-align: left;
+    align-self: flex-start; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .linklike:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .rule-note {
+    border: 1px solid var(--rule); border-radius: var(--r-sm);
+    padding: 13px 15px; font-size: 14px; line-height: 1.5; color: var(--ink-2);
+  }
+  .rule-note b { color: var(--ink); font-weight: 600; }
+
+  .warn {
+    background: var(--clay-soft); border-left: 2px solid var(--clay);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    padding: 11px 13px; font-size: 14.5px; color: var(--ink-2);
+  }
+
+  /* --- карточки-вехи --- */
+  .card {
+    background: var(--card); border: 1px solid var(--rule); border-radius: var(--r-md);
+    box-shadow: var(--shadow);
+    padding: 20px 18px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .card h2 {
+    font-family: var(--serif); font-size: 22px; font-weight: 400;
+    line-height: 1.22; text-wrap: balance; letter-spacing: -.005em;
+  }
+  .card .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: -6px;
+  }
+  .card.milestone { border-color: var(--accent); }
+  .card p { font-size: 16px; color: var(--ink-2); }
+  /* Специфичнее, чем .card p — иначе подписи получали бы размер основного текста */
+  .card p.card-note, .card-note { font-size: 14px; line-height: 1.5; color: var(--muted); }
+  .card-note a { color: var(--accent); }
+  .card textarea { min-height: 46px; }
+  .card ul.q { padding-left: 1.1em; display: flex; flex-direction: column; gap: 6px; font-size: 15.5px; color: var(--ink-2); }
+  .card h3.fin-h {
+    font-size: 15px; font-weight: 600; color: var(--ink);
+    margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--rule-soft);
+  }
+
+  /* Шаги первого дня нумеруются сами — порядок здесь и есть смысл */
+  #intro { counter-reset: step; }
+  .card h3.step {
+    font-family: var(--sans); font-size: 16.5px; font-weight: 600; color: var(--ink);
+    margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--rule-soft);
+    display: flex; align-items: center; gap: 10px;
+  }
+  #intro > h3.step:first-of-type { margin-top: 2px; padding-top: 0; border-top: 0; }
+  .card h3.step::before {
+    counter-increment: step; content: counter(step);
+    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent); color: var(--accent-ink);
+    font-family: var(--mono); font-size: 12px; font-weight: 400;
+    display: inline-grid; place-items: center;
+  }
+
+  .check { display: flex; align-items: center; gap: 11px; font-size: 15.5px; color: var(--ink); cursor: pointer; }
+  .check input { width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+
+  .sealed {
+    background: var(--rule-soft); border-radius: var(--r-sm); padding: 12px 14px;
+    font-size: 14.5px; color: var(--ink-2);
+  }
+  .ready { font-family: var(--serif); font-size: 19px; color: var(--ink); }
+  .next-note {
+    border-top: 1px solid var(--rule); padding-top: 14px; margin-top: 6px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .next-note p { font-size: 15.5px; color: var(--ink-2); }
+  .env-then {
+    background: var(--rule-soft); border-radius: var(--r-sm); padding: 12px 14px;
+    font-size: 15.5px; color: var(--ink-2); white-space: pre-wrap;
+  }
+  .povtor-row {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 10px 0; border-top: 1px solid var(--rule-soft);
+  }
+
+  .insight { border-left: 2px solid var(--clay); }
+  .insight p { font-size: 15.5px; color: var(--ink-2); }
+
+  /* --- описания разделов и аудио --- */
+  .lesson-btn {
+    align-self: flex-start; background: none; border: 0; padding: 2px 0;
+    font: inherit; font-size: 13.5px; color: var(--accent); cursor: pointer;
+  }
+  .lesson-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .lesson {
+    border-left: 2px solid var(--rule); padding: 2px 0 2px 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    font-size: 15px; line-height: 1.5; color: var(--ink-2);
+  }
+  .lesson audio { width: 100%; height: 34px; }
+  .lesson-miss { font-size: 13.5px; color: var(--clay); }
+
+  details.lesson-item { border-top: 1px solid var(--rule-soft); }
+  details.lesson-item > summary {
+    padding: 12px 0; cursor: pointer; font-size: 15.5px; list-style: none;
+  }
+  details.lesson-item > summary::-webkit-details-marker { display: none; }
+  details.lesson-item > summary::before { content: "+ "; color: var(--muted); font-family: var(--mono); }
+  details.lesson-item[open] > summary::before { content: "– "; }
+  details.lesson-item[open] > summary { font-weight: 600; }
+  details.lesson-item > .lesson { padding-bottom: 14px; }
+
+  .addmore { display: flex; }
+  .addmore .btn { flex: 1; }
+
+  /* --- нижняя панель --- */
+  .save {
+    position: sticky; bottom: 0;
+    background: linear-gradient(to top, var(--ground) 74%, transparent);
+    padding: 16px 0 8px; margin-top: -2px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .save .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .save .row .btn { min-height: 46px; font-size: 15px; }
+  .save-hint { font-size: 12.5px; color: var(--muted); text-align: center; }
+  .save-hint.copy-warn {
+    color: var(--clay); font-weight: 600; font-size: 13px;
+    background: var(--clay-soft); border-radius: var(--r-sm); padding: 7px 10px;
+  }
+
+  details.restore { border-top: 1px solid var(--rule-soft); margin-top: 4px; }
+  details.restore > summary {
+    padding: 12px 0; cursor: pointer; font-size: 15px; color: var(--accent); list-style: none;
+  }
+  details.restore > summary::-webkit-details-marker { display: none; }
+  details.restore > summary::before { content: "+ "; font-family: var(--mono); }
+  details.restore[open] > summary::before { content: "– "; }
+  .restore-body { display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; }
+  .restore-body input[type="file"] { font: inherit; font-size: 14px; color: var(--ink-2); }
+  /* Поле восстановления живёт не внутри карточки, а прямо на фоне страницы —
+     и фон у него был тот же, что у страницы, а рамка прозрачная. Поле было
+     буквально невидимым: человек не понимал, куда вставлять. */
+  .restore-body textarea { background: var(--card); border-color: var(--rule); }
+  .card-note.lost { border-top: 1px solid var(--rule-soft); padding-top: 12px; margin-top: 4px; }
+
+  .toast {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(22px + env(safe-area-inset-bottom));
+    background: var(--ink); color: var(--ground);
+    padding: 11px 18px; border-radius: 999px; font-size: 15px;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease; z-index: 20;
+    max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; }
+
+  /* --- тихие секции: описания, аудио, записи --- */
+  details.archive {
+    background: none; border: 0; border-top: 1px solid var(--rule); border-radius: 0;
+  }
+  details.archive > summary {
+    padding: 14px 2px; cursor: pointer; font-size: 15.5px; list-style: none;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    color: var(--ink);
+  }
+  details.archive > summary::-webkit-details-marker { display: none; }
+  details.archive > summary .cnt {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    letter-spacing: .04em;
+  }
+  .archive-body { padding: 0 2px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .arch-group { display: flex; flex-direction: column; gap: 7px; }
+  .arch-group h3 { font-size: 13px; font-weight: 600; color: var(--accent); font-family: var(--mono); letter-spacing: .02em; }
+  .arch-item { font-size: 15px; color: var(--ink-2); border-left: 2px solid var(--rule-soft); padding-left: 11px; }
+  .arch-item time { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--rule-soft); padding: 4px; border-radius: var(--r-sm); }
+  .tab {
+    min-height: 36px; border: 0; border-radius: 6px; background: none;
+    font: inherit; font-size: 14px; color: var(--ink-2); cursor: pointer;
+  }
+  .tab[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.07); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .today {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .06em;
+    color: var(--muted); font-variant-numeric: tabular-nums; margin-top: -8px;
+  }
+
+  .search {
+    font: inherit; font-size: 16px; color: var(--ink);
+    background: var(--card); border: 1px solid var(--rule); border-radius: var(--r-sm);
+    padding: 11px 13px; width: 100%; -webkit-appearance: none;
+  }
+  .search:focus { outline: none; border-color: var(--accent); }
+
+  ol.steps {
+    padding-left: 1.3em; display: flex; flex-direction: column; gap: 9px;
+    font-size: 15.5px; color: var(--ink-2);
+  }
+  ol.steps b { color: var(--ink); font-weight: 600; }
+
+  .sum { display: flex; flex-wrap: wrap; gap: 5px; }
+  .sum span {
+    font-family: var(--mono); font-size: 12px; padding: 4px 9px; border-radius: 999px;
+    background: var(--rule-soft); color: var(--ink-2); font-variant-numeric: tabular-nums;
+  }
+  .sum span.zero { color: var(--muted); opacity: .6; }
+  .sum span.hot { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  /* Дни наблюдений — по семь в ряд: четырнадцать читаются как две недели.
+     Показываем только набранные дни, а не календарные пропуски: пропуск
+     в этом практикуме ничего не значит, и напоминать о нём незачем. */
+  .daygrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .daycell {
+    min-height: 30px; padding: 2px;
+    display: grid; place-items: center;
+    border: 1px dashed var(--rule); border-radius: 6px;
+    background: none; color: var(--muted);
+    font-family: var(--mono); font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+  .daycell.done {
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid transparent; font-weight: 600;
+  }
+
+  footer.foot {
+    font-size: 12.5px; line-height: 1.55; color: var(--muted); text-align: center;
+    padding-top: 16px; border-top: 1px solid var(--rule);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  footer.foot b { color: var(--ink-2); font-weight: 600; }
+  footer.foot a { color: var(--accent); }
+
+  @media (max-width: 380px) {
+    .chips { grid-template-columns: 1fr; }
+    .ask-title { font-size: 24px; }
+    .daycell { font-size: 10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="top">
+    <div class="brand">Инструкция ко мне</div>
+    <div class="stamp" id="stamp">—</div>
+  </header>
+
+  <section class="card milestone" id="intro" hidden>
+    <p class="eyebrow">День 1</p>
+    <h2>С чего начать</h2>
+    <p class="card-note">Четыре шага. Дни здесь считаются по записям, а не по календарю: день, в который ты что-то записала, — это день практикума. Не записала — он просто не наступил.</p>
+
+    <h3 class="step">Послушать первое аудио</h3>
+    <div id="introLesson"></div>
+    <label class="check"><input type="checkbox" id="chkUrok"> Послушала</label>
+    <button type="button" class="linklike" id="urokLaterBtn">Послушаю позже — сейчас нет возможности</button>
+    <p class="card-note" id="urokLaterNote" hidden>Хорошо. Оно ждёт внизу, в «Аудио по дням».</p>
+    <p class="card-note">Всё остальное аудио лежит внизу и никуда не денется: описания восьми разделов — на случай «а куда это записать», «Почему это работает» — откуда взялся метод, «Как тут всё устроено» — что где лежит на этой странице. Сегодня их слушать не надо.</p>
+    <p class="card-note">Там же внизу появится «Аудио по дням» — этот блок пополняется по ходу практикума сам.</p>
+
+    <h3 class="step">Поставить три сигнала</h3>
+    <p class="card-note">10:00 · 15:00 · 20:00. Сигнал ставишь себе сама — эта страница ничего не присылает. Зазвонил — останавливаешься на минуту и записываешь.</p>
+    <button class="btn ghost" id="icsBtn">Добавить напоминания в календарь</button>
+    <p class="card-note">Кнопка ставит напоминания на месяц вперёд. Надёжнее три будильника руками: у будильника звук громче, и он не кончится, если растянешь практикум подольше.</p>
+    <label class="check"><input type="checkbox" id="chkAlarm"> Сигналы стоят</label>
+
+    <h3 class="step">Выписать дежурные фразы</h3>
+    <p>Чем ты объясняешь себе почти всё, когда непонятно, что происходит? «Просто устала». «Магнитные бури». «Я такая». «Возраст».</p>
+    <p class="card-note">Две-три свои, по одной в строке.</p>
+    <div id="frazyBox"></div>
+
+    <h3 class="step">Запечатать конверт</h3>
+    <p>Опиши одну ситуацию последних дней — как умеешь, своими словами. Не старайся написать правильно.</p>
+    <p class="card-note">В последний день ты опишешь ту же ситуацию заново, не заглядывая сюда. Разница между двумя описаниями и покажет, что изменилось. Подделать её нельзя.</p>
+    <div id="envBox"></div>
+
+    <p class="card-note lost">Уже начинала, а записи пропали? <button type="button" class="linklike" id="lostBtn">Восстановить их</button></p>
+
+    <div id="startNext" class="next-note">
+      <h3 class="fin-h">Что откроется дальше</h3>
+      <p>Как только все четыре шага сделаны — галочки, фразы и конверт, — вместо этой страницы появится экран записи: восемь разделов и вопрос «что с тобой сейчас».</p>
+      <p class="card-note">Дальше всё одинаково: звонит сигнал — выбираешь раздел, пишешь строчку. Минута три раза в день. И так четырнадцать дней с записями.</p>
+    </div>
+
+    <div id="startDone" hidden>
+      <p class="ready">Всё, можно начинать.</p>
+      <p class="card-note">Первый день уже засчитан: дежурные фразы — это тоже записи. Эта страница больше не появится, дальше только записи.</p>
+      <p class="card-note">Дальше по сигналу: зазвонил — пишешь строчку. Если сегодня уже поздно, начнёшь завтра. Дни считаются по записям, ничего не сгорит.</p>
+    </div>
+  </section>
+  <section class="card milestone" id="bonus" hidden>
+    <p class="eyebrow">День 3</p>
+    <h2>Это тебе</h2>
+    <p class="card-note">Не было в программе. Третий день — самое трудное место: кажется, что ничего не происходит. Поэтому оно и здесь.</p>
+    <div id="bonusLesson"></div>
+    <p class="card-note">Оно останется внизу, в «Аудио по дням».</p>
+    <button class="btn ghost" id="bonusDone">Прочитала</button>
+  </section>
+  <section class="card milestone" id="dayFact" hidden>
+    <p class="eyebrow">День 5</p>
+    <h2>Факт или вывод</h2>
+    <p class="card-note">Записи сегодня как обычно — они главное. А сверх них небольшое задание: открой свои записи за эти дни и возьми любые три.</p>
+    <div id="dayFactLesson"></div>
+    <p class="card-note">Останется внизу, в «Аудио по дням».</p>
+    <p>Раздели каждую надвое: что здесь произошло на самом деле — и что я про себя из этого вывела.</p>
+    <p class="card-note">«Муж молчал весь вечер, значит я утром сказала что-то не то» → факт: молчал весь вечер. Вывод: я сказала что-то не то.</p>
+    <p class="card-note">Заодно пройди по написанному и уточни записи, где не сказано, после чего это было.</p>
+    <button class="btn ghost" id="dayFactDone">Сделала</button>
+  </section>
+  <section class="card milestone" id="dayWeek" hidden>
+    <p class="eyebrow">День 7</p>
+    <h2>Половина позади</h2>
+    <p class="card-note">Записи как обычно, ничего не меняем. А сверх них короткая остановка: сегодня ничего не разбираем, просто смотрим, что уже собралось.</p>
+    <ol class="steps">
+      <li>Посмотри, сколько записей в каждом разделе. Куда тебя несёт само?</li>
+      <li>Где пусто. Это не пробел, это ответ — просто пока непонятно какой.</li>
+      <li>Пройди по тому, что ты писала после слов «после чего это было». Что-нибудь уже повторилось?</li>
+    </ol>
+    <div id="weekLesson"></div>
+    <p class="card-note">Вторая половина проверит первую: то, что случилось дважды, случайностью быть перестаёт.</p>
+    <button class="btn ghost" id="collectBtn3">Собрать всё, что записано</button>
+    <button class="btn ghost" id="dayWeekDone">Посмотрела</button>
+  </section>
+  <section class="card milestone" id="daySbor" hidden>
+    <p class="eyebrow">День 13</p>
+    <h2>Сборка</h2>
+    <p class="card-note">Одну строчку запиши как всегда — записи главное. А дальше главное дело дня: читаем своё и подчёркиваем.</p>
+    <ol class="steps">
+      <li>Прочитай подряд, что ты замечала, по всем разделам. Задержись на том, что встречается больше одного раза.</li>
+      <li>То же с тем, что стоит после слов «после чего это было».</li>
+      <li>Выпиши ниже два-три своих «у меня всегда».</li>
+      <li><b>Про людей.</b> Пройди по разделам «Силы» и «Собой / не собой» и посмотри имена. Встречается ли одно больше двух раз — и где именно: там, где силы уходят, или там, где возвращаются.</li>
+      <li><b>Про то, что помогает.</b> Пройди по «Сигналам тела» и вспомни, что в тот раз помогло.</li>
+      <li><b>Про фразы.</b> Прочитай подряд, что ты себе говорила. Те, что звучали не раз, — твои дежурные.</li>
+      <li><b>Про пустое.</b> Посмотри, где записей нет совсем. Это тоже ответ.</li>
+    </ol>
+    <button class="btn" id="collectBtn2">Собрать всё для чтения</button>
+    <p class="card-note">Телефон спросит, куда отправить, — выбери себя: в Telegram, в избранное, в заметки. Читать удобнее оттуда. Сверху окажется «Пока не знаю»: этот раздел поставлен первым нарочно.</p>
+
+    <h3 class="fin-h">Мои повторения</h3>
+    <p class="card-note">Их не придумывают — они видны, когда прочитаешь записи подряд.</p>
+    <p class="card-note">Последнее поле — «где мой вход». Повтор — это цепочка, и в конце её, где уже накрыло, сделать ничего нельзя. Вход — то место ближе к началу, где у тебя ещё есть влияние. Не план и не обещание: одно место.</p>
+    <div id="sborLesson"></div>
+    <div id="povtorBox"></div>
+    <p class="card-note" id="namesHint" hidden></p>
+  </section>
+
+  <h1 id="ask" class="ask-title">Что с тобой сейчас и что было до этого?</h1>
+  <p class="card-note ask-note" id="askNote" hidden></p>
+  <p class="today" id="todayCount" hidden></p>
+
+  <div id="slots"></div>
+
+  <div class="addmore" id="addmore" hidden>
+    <button class="btn ghost" id="addBtn">Ещё запись</button>
+  </div>
+
+  <section class="card" id="progress" hidden>
+    <h2 id="progressTitle">Твоя инструкция</h2>
+    <div class="sum" id="progressSum"></div>
+    <p class="card-note" id="progressDays"></p>
+    <div class="daygrid" id="progressGrid"></div>
+  </section>
+
+  <section class="card insight" id="insight" hidden></section>
+
+  <div class="rule-note" id="ruleNote">
+    <b>Правило трёх.</b> Что я заметила · после чего и с кем · что я себе сказала или сделала. Нет одного — это ещё не запись, это ощущение.
+  </div>
+
+  <div class="rule-note" id="hardNote">
+    <b>Неудобное записывать важнее всего.</b> То, что стыдно или кажется мелочью, обычно и есть главное. Никто этого не увидит.
+  </div>
+
+  <div class="rule-note" id="urokNote" hidden>
+    <b>Первое аудио ты ещё не слушала.</b> Оно внизу, в «Аудио по дням». Записывать можно и без него, но там объяснено, зачем всё устроено именно так. <button type="button" class="linklike" id="urokNoteDone">Послушала</button>
+  </div>
+
+  <div class="save" id="saveBar">
+    <div class="save-hint">Записи живут только в этом телефоне. Отправь их себе — будет копия, из которой всё вернётся, если телефон потеряется или ты почистишь браузер.</div>
+    <button class="btn" id="sendTg" disabled>Отправить себе в Telegram</button>
+    <div class="row">
+      <button class="btn ghost" id="sendShare" disabled>MAX, Заметки…</button>
+      <button class="btn ghost" id="sendCopy" disabled>Скопировать</button>
+    </div>
+    <div class="save-hint" id="saveHint">Сначала запиши хотя бы одно</div>
+    <div class="save-hint" id="copyState"></div>
+  </div>
+
+  <section class="card milestone" id="final" hidden>
+    <p class="eyebrow">День 14</p>
+    <h2>Что я теперь знаю о себе</h2>
+
+    <div id="itogLesson"></div>
+
+    <!-- Конверт стоит первым: второе описание должно быть написано до того,
+         как человек начнёт отвечать на четыре вопроса. Иначе оно пишется
+         уже подобранными словами, и сравнение двух описаний ничего не стоит. -->
+    <h3 class="fin-h">Конверт</h3>
+    <div id="envOpen"></div>
+
+    <h3 class="fin-h">Четыре вопроса</h3>
+    <p class="card-note">Ответы вынимаются из написанного, а не придумываются.</p>
+    <div id="finalQs"></div>
+
+    <h3 class="fin-h">С чем я хочу разобраться глубже</h3>
+    <p class="card-note">Одной строкой, с чего начинается запрос: «хочу научиться…», «хочу перестать…», «хочу справляться с…». Не «почему я такая» — с этим к специалисту не приходят.</p>
+    <textarea id="finalQ" rows="1" placeholder="Хочу…"></textarea>
+
+    <button class="btn" id="exportBtn">Сохранить инструкцию файлом</button>
+    <p class="card-note">Файл останется у тебя, даже если этой страницы однажды не будет. Из него же можно сделать PDF или распечатать.</p>
+    <button class="btn ghost" id="finalSend">Отправить это себе</button>
+  </section>
+
+  <section class="card" id="feedback" hidden>
+    <h2>Расскажи, что получилось</h2>
+    <p class="card-note">Три вопроса, по строчке на каждый. Это не отчёт — пиши как есть, кривые формулировки тоже годятся.</p>
+    <ul class="q">
+      <li>С чем ты пришла — что было до?</li>
+      <li>Что оказалось самым неожиданным за эти дни?</li>
+      <li>Что ты теперь знаешь про себя, чего не знала две недели назад?</li>
+    </ul>
+    <p class="card-note">И припиши, можно ли показывать это другим — тем, кто только думает, идти или нет. Если нет, просто напиши «только для тебя»: я не покажу.</p>
+    <button class="btn" id="feedbackBtn">Написать Галине</button>
+  </section>
+
+  <details class="archive">
+    <summary><span>Описание разделов</span><span class="cnt">подробно, с примерами</span></summary>
+    <div class="archive-body" id="lessons"></div>
+  </details>
+
+  <details class="archive" id="methodBox">
+    <summary><span>Почему это работает</span><span class="cnt">про метод</span></summary>
+    <div class="archive-body" id="methodLesson"></div>
+  </details>
+
+  <details class="archive" id="howBox">
+    <summary><span>Как тут всё устроено</span><span class="cnt">про саму страницу</span></summary>
+    <div class="archive-body" id="howLesson"></div>
+  </details>
+
+  <details class="archive" id="dayAudioBox" hidden>
+    <summary><span>Аудио по дням</span><span class="cnt" id="dayAudioCount">0</span></summary>
+    <div class="archive-body" id="dayAudio"></div>
+  </details>
+
+  <details class="archive" id="archiveBox">
+    <summary><span>Мои записи</span><span class="cnt" id="archCount">0</span></summary>
+    <div class="archive-body">
+      <div class="tabs">
+        <button class="tab" type="button" data-view="sections" aria-pressed="true">По разделам</button>
+        <button class="tab" type="button" data-view="days" aria-pressed="false">По дням</button>
+      </div>
+      <input type="search" id="archSearch" class="search" placeholder="Найти по слову" autocomplete="off">
+      <div id="archList"></div>
+      <button class="btn ghost" id="collectBtn">Собрать всё, что записано</button>
+      <button class="btn ghost" id="exportBtn2">Сохранить инструкцию файлом</button>
+      <p class="card-note">Файл останется у тебя, даже если этой страницы однажды не будет. В нём же лежит копия всех записей — из него можно восстановиться.</p>
+
+      <details class="restore">
+        <summary>Если записи пропали</summary>
+        <div class="restore-body">
+          <p class="card-note">Такое бывает: чистка браузера, смена телефона, режим инкогнито. Восстановить можно двумя способами.</p>
+
+          <h3 class="fin-h">Из сохранённого файла</h3>
+          <p class="card-note">Тот самый файл «Инструкция ко мне».</p>
+          <input type="file" id="restoreFile" accept=".html,text/html">
+
+          <h3 class="fin-h">Из того, что отправляла себе</h3>
+          <p class="card-note">Скопируй сообщения из своего канала или заметок и вставь в поле ниже — хоть все разом. Копируй целиком, вместе со строчкой даты: по ней страница и узнаёт, где кончается одна запись и начинается другая.</p>
+          <textarea id="restoreText" rows="3" placeholder="05.08, 15:04 · #тело&#10;Тяжесть в плечах&#10;После: совещание"></textarea>
+          <button class="btn ghost" id="restoreTextBtn">Восстановить из текста</button>
+          <p class="card-note">Записи, которые уже есть, не задвоятся.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <footer class="foot">
+    <p>Записи хранятся <b>только в этом телефоне</b>. Никуда не отправляются, пока ты сама не нажмёшь.</p>
+    <p>Метод опирается на научные исследования: experience sampling, emotional granularity, affect labeling, expressive writing.</p>
+    <p><button type="button" class="linklike" id="icsBtn2">Поставить напоминания 10:00 · 15:00 · 20:00</button></p>
+    <p id="supportLine" hidden>Не получается или что-то непонятно — <a id="supportLink" href="#" target="_blank" rel="noopener">напиши мне</a>. Про то, как записывать: что твои записи значат, называешь ты сама.</p>
+    <p id="buyLine" hidden>Если тебе переслали эту ссылку — практикум можно <a id="buyLink" href="#" target="_blank" rel="noopener">купить здесь</a>.</p>
+    <p>Галина Васильева, психолог · <a href="https://t.me/vasileva_galina_psy" target="_blank" rel="noopener">канал в Telegram</a></p>
+  </footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // Уроки привязаны к разделу, а не ко дню: человек слушает, когда столкнулся.
+  // Тексты ниже — каркас под надиктовку, не финальные формулировки.
+  // ex — примеры в трёх полях. Свои на каждый раздел: один пример на все
+  // восемь тянул запись не туда. В «Моих да» подсказка «тяжесть в плечах»
+  // прямо мешала: раздел про интерес, а пример был про усталость.
+  //
+  // Время во всех примерах стоит в первой строке — так же, как говорит
+  // первое аудио: «для времени отдельного поля нет, пиши в первую строчку».
+  // Второе поле — про обстоятельства, а не про часы: событие, фон, имя.
+  var SECTIONS = [
+    {
+      id: "frazy", name: "Дежурные фразы", tag: "#фразы",
+      hint: "Фраза целиком: «я опять…», «надо…», «вдруг…».",
+      ex: ["Вечером сказала себе: просто устала", "После того как всех уложила", "Легла с телефоном и не стала разбираться"],
+      lesson: "«Просто устала» звучит как ответ — и ты перестаёшь искать. А причина почти всегда конкретная."
+    },
+    {
+      id: "telo", name: "Сигналы тела", tag: "#тело",
+      hint: "Что делает тело.",
+      ex: ["Тяжесть в плечах, к вечеру", "После совещания", "Решила, что это осанка"],
+      lesson: "Тело реагирует раньше, чем ты успеваешь понять. Важно не что болит, а после чего."
+    },
+    {
+      id: "da", name: "Мои «да»", tag: "#да",
+      hint: "Интерес, желание, забыла про время.",
+      ex: ["Вечером стало интересно, читала и не заметила часа", "Когда все легли и никто не дёргал", "Удивилась, что меня это до сих пор цепляет"],
+      lesson: "Интерес тихий, его труднее заметить, чем усталость. Но «чего я хочу» собирается именно из мелочей."
+    },
+    {
+      id: "net", name: "Мои «нет»", tag: "#нет",
+      hint: "Чего не хотела, где было сопротивление.",
+      ex: ["В обед внутри всё сжалось", "Попросили выйти в субботу", "Сказала: да, конечно"],
+      lesson: "Отказ проглатывается раньше, чем осознаётся. Записывай, чего не хотела и что в итоге сделала."
+    },
+    {
+      id: "sily", name: "Силы", tag: "#силы",
+      hint: "После чего меньше сил, после чего легче.", name_needed: true,
+      ex: ["К обеду сил не осталось, будто выключили", "После разговора с Ниной", "Списала на недосып"],
+      lesson: "Не «я устала», а после чего именно и с кем. Усталость почти всегда адресная."
+    },
+    {
+      id: "reakcii", name: "Автоматические", full: "Автоматические реакции", tag: "#реакции",
+      hint: "Что ты сделала: ем, молчу, шучу, ухожу.",
+      ex: ["В одиннадцать вечера открыла холодильник, хотя не голодна", "Сразу после телефонного разговора", "Пообещала себе, что это в последний раз"],
+      lesson: "Важно не то, что ты сделала, а что было прямо перед."
+    },
+    {
+      id: "roli", name: "Собой / не собой", tag: "#роли",
+      hint: "Как хотела, как надо, какую роль играла.", name_needed: true,
+      ex: ["Весь вечер говорила бодрым голосом, который не мой", "На встрече, рядом был Игорь", "Дома потом молчала"],
+      lesson: "Роль сама по себе не плохо. Плохо, когда её не выбирают."
+    },
+    {
+      id: "neyasno", name: "Пока не знаю", tag: "#разобрать",
+      hint: "Записать есть что, а куда — непонятно. Разберёшь в сборке.", wide: true,
+      ex: ["Утром что-то кольнуло, а что — не пойму", "Читала ленту", "Пролистала дальше"],
+      lesson: "Записи, которым не нашлось места, часто самые честные."
+    }
+  ];
+
+  var INTRO = {
+    id: "vse", name: "С чего начать",
+    lesson: "Что делать эти четырнадцать дней и как выглядит запись, из которой потом что-то соберётся.\n\n" +
+      "Правило трёх, куда писать, чего делать не надо и четыре шага сегодняшнего дня."
+  };
+
+  // Метод вынесен из первого аудио 06.08 и ко дню не привязан. В первый день
+  // человеку нужно начать, а не понять всё; объяснение он дослушает тогда,
+  // когда появится вопрос «а почему именно так» — обычно на первой неделе.
+  var METHOD = {
+    id: "metod", name: "Почему это работает",
+    lesson: "Откуда взялся метод, зачем разделов восемь и почему пропуск ничего не ломает."
+  };
+
+  // Устройство страницы вынесено из первого аудио и ко дню не привязано:
+  // «где что лежит» нужно не в первый день, а в тот, когда что-то потерялось.
+  // Поэтому висит всегда и на виду, а не в «Аудио по дням».
+  var HOW = {
+    id: "ustroystvo", name: "Как тут всё устроено",
+    lesson: "Экран сверху вниз: что где лежит и как ничего не потерять."
+  };
+
+  // Ранняя награда: не анонсируется заранее и ничем не обусловлена —
+  // обещанная награда за прохождение снижает мотивацию, неожиданная не снижает.
+  var BONUS = {
+    id: "bonus", name: "Это тебе",
+    lesson: "Про третий день: почему на нём кажется, что ничего не происходит, — и почему это ровно то место, где всё и начинается."
+  };
+
+  // Открывается на пятый день наблюдений. Имя файла по содержанию, а не по
+  // номеру дня: номер уже один раз уехал вместе с картой дней и может снова.
+  var DAY_FACT = {
+    id: "fakt", name: "Факт или вывод",
+    lesson: "Половина написанного — не факты, а твои выводы о себе. Сегодня их разделяем."
+  };
+
+  // Единственная остановка в середине. Аудио должно тормозить, а не разгонять:
+  // записей уже много, соблазн толковать сильный, а повторов ещё мало.
+  var DAY_WEEK = {
+    id: "polovina", name: "Половина позади",
+    lesson: "Смотрим на форму записей, а не на смысл: куда несёт само, где пусто, что уже повторилось. Выводы — рано."
+  };
+
+  // Тринадцатый и четырнадцатый день были единственными местами без голоса,
+  // а работа там самая сложная за весь практикум: человек четырнадцать дней
+  // собирал записи и в момент выводов оставался один на один с текстом.
+  // Имена файлов по содержанию, а не по номеру дня.
+  var DAY_SBOR = {
+    id: "sborka", name: "Как собрать инструкцию",
+    lesson: "Как читать свои записи подряд, что считать повтором и чем вход отличается от плана."
+  };
+
+  var DAY_ITOG = {
+    id: "itog", name: "Последний день",
+    lesson: "Конверт, четыре ответа и строка, с которой можно идти дальше."
+  };
+
+  // Адрес покупки. Пустая строка — строчка в подвале не показывается,
+  // чтобы не было ссылки в никуда. Впиши адрес формы оплаты — появится сама.
+  // Защитить статику нечем: ссылку перешлют в любом случае. Поэтому пересылку
+  // не ловим, а делаем каналом продажи — получившая ссылку видит, где купить.
+  var BUY_URL = "";
+
+  // Связь с автором. Есть только у первого потока: купившим за 990 обещаны
+  // четырнадцать дней на связи, и обещание дано голосом, на эфире. В аудио
+  // его не вносим — файлы вечные, а поддержка кончится вместе с ценой 990.
+  // Пустая строка — строчка не показывается. Когда цена станет 1290, вернуть
+  // сюда пустую строку: это одна правка вместо перезаписи шестнадцати файлов.
+  var SUPPORT_URL = "";
+
+  var KEY = "instrukciya_zapisi_v1";
+  var KEY_SENT = "instrukciya_otpravleno_v1";
+  var KEY_Q = "instrukciya_vopros_v1";
+  var KEY_FINAL = "instrukciya_final_v1";
+  var KEY_START = "instrukciya_start_v1";
+  var KEY_ENV = "instrukciya_konvert_v1";
+  var KEY_SEEN = "instrukciya_vehi_v1";
+  var MAX_SLOTS = 6;   // норма дня — три, но не запрещаем больше
+
+  var slots = [];          // текущая сессия: { section, now, before, said, open, done }
+  var archive = [];        // сохранённые записи
+  var slotsEl = document.getElementById("slots");
+
+  // ---------- хранение ----------
+
+  var lastSent = 0;
+  var start = { urok: false, alarm: false, frazy: false };
+  var env = { then: "", now: "", ts: 0 };
+  var seen = {};           // вехи, которые человек уже закрыл сам
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) archive = JSON.parse(raw) || [];
+      lastSent = parseInt(localStorage.getItem(KEY_SENT) || "0", 10) || 0;
+      var s = localStorage.getItem(KEY_START);
+      if (s) start = JSON.parse(s) || start;
+      var e = localStorage.getItem(KEY_ENV);
+      if (e) env = JSON.parse(e) || env;
+      var v = localStorage.getItem(KEY_SEEN);
+      if (v) seen = JSON.parse(v) || {};
+    } catch (e) { archive = []; }
+  }
+
+  function saveSeen() {
+    try { localStorage.setItem(KEY_SEEN, JSON.stringify(seen)); } catch (e) {}
+  }
+
+  function saveStart() {
+    try { localStorage.setItem(KEY_START, JSON.stringify(start)); } catch (e) {}
+  }
+
+  function saveEnv() {
+    try { localStorage.setItem(KEY_ENV, JSON.stringify(env)); } catch (e) {}
+  }
+
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(archive)); } catch (e) {}
+  }
+
+  function markSent() {
+    lastSent = Date.now();
+    try { localStorage.setItem(KEY_SENT, String(lastSent)); } catch (e) {}
+  }
+
+  function plural(n, forms) {
+    var n10 = n % 10, n100 = n % 100;
+    if (n10 === 1 && n100 !== 11) return forms[0];
+    if (n10 >= 2 && n10 <= 4 && (n100 < 10 || n100 >= 20)) return forms[1];
+    return forms[2];
+  }
+
+  // С годом в ключе: практикум идёт по записям и может растянуться,
+  // а без года 5 февраля разных лет слиплись бы в один день.
+  function dayKey(d) { return d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate()); }
+
+  function uniqueDays() {
+    var days = {};
+    archive.forEach(function (e) { days[dayKey(localDate(e))] = 1; });
+    return Object.keys(days).length;
+  }
+
+  // ---------- вспомогательное ----------
+
+  var MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+
+  function two(n) { return n < 10 ? "0" + n : "" + n; }
+  function dateShort(d) { return two(d.getDate()) + "." + two(d.getMonth() + 1); }
+  function timeShort(d) { return two(d.getHours()) + ":" + two(d.getMinutes()); }
+  function dateLong(d) { return d.getDate() + " " + MONTHS[d.getMonth()]; }
+
+  // Метку времени показываем ту, что была на часах в момент записи.
+  // Иначе при переезде в другой пояс вечерняя запись покажется ночной.
+  function localDate(e) {
+    if (typeof e.off === "number") {
+      return new Date(e.ts + (new Date().getTimezoneOffset() - e.off) * 60000);
+    }
+    return new Date(e.ts);
+  }
+
+  function sectionById(id) {
+    for (var i = 0; i < SECTIONS.length; i++) if (SECTIONS[i].id === id) return SECTIONS[i];
+    return null;
+  }
+
+  function toast(msg) {
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove("show"); }, 2200);
+  }
+
+  function grow(ta) {
+    ta.style.height = "auto";
+    ta.style.height = Math.max(48, ta.scrollHeight) + "px";
+  }
+
+  // ---------- текст записи ----------
+
+  function entryText(e) {
+    var s = sectionById(e.section);
+    var d = localDate(e);
+    var head = dateShort(d) + ", " + timeShort(d) + " · " + (s ? s.tag : "");
+    var lines = [head, e.now];
+    if (e.before) lines.push("После: " + e.before);
+    if (e.said) lines.push("Сказала: " + e.said);
+    return lines.join("\n");
+  }
+
+  function sessionText() {
+    var ready = slots.filter(function (s) { return s.done; });
+    return ready.map(entryText).join("\n\n");
+  }
+
+  // ---------- отрисовка слотов ----------
+
+  // Правило трёх названо ровно по полям формы: что я заметила · после чего
+  // и с кем · что я себе сказала или сделала. Раньше третьим пунктом стояло
+  // «когда началось», и это расходилось с формой: времени отдельного поля нет,
+  // оно живёт внутри первого («Тяжесть в плечах, к вечеру») и внутри «после
+  // чего» («после планёрки»). Третье поле при этом в правиле не упоминалось,
+  // хотя из него растут дежурные фразы, автоматические реакции и задание
+  // пятого дня.
+  // Проверяем только то, что можно проверить фактом: пустое «после чего».
+  function missingText(slot) {
+    return slot.before.trim() ? "" : "Проверь: после чего это было и кто был рядом?";
+  }
+
+  function newSlot(open) {
+    return { section: null, now: "", before: "", said: "", open: !!open, done: false, asked: false, lessonOpen: false };
+  }
+
+  function render() {
+    slotsEl.innerHTML = "";
+    slots.forEach(function (slot, i) { slotsEl.appendChild(renderSlot(slot, i)); });
+
+    var last = slots[slots.length - 1];
+    var canAdd = slots.length < MAX_SLOTS && last && last.done;
+    document.getElementById("addmore").hidden = !canAdd;
+
+    var readyCount = slots.filter(function (s) { return s.done; }).length;
+    ["sendTg", "sendShare", "sendCopy"].forEach(function (id) {
+      document.getElementById(id).disabled = readyCount === 0;
+    });
+    document.getElementById("saveHint").textContent = readyCount === 0
+      ? "Сначала запиши хотя бы одно"
+      : (readyCount === 1 ? "Готова одна запись" : "Готово записей: " + readyCount);
+
+    renderIntro();
+    renderDayAudio();
+    renderToday();
+    renderCollectBtn();
+    renderProgress();
+    renderInsight();
+    renderCopyState();
+    renderFinal();
+    renderArchive();
+  }
+
+  // Пока четыре шага не сделаны, записи закрыты: без подготовки
+  // практикум разваливается в первые же сутки.
+  function startReady() {
+    // Восстановившая записи подготовку уже проходила. Требовать её заново —
+    // значит отправить человека писать дежурные фразы по второму разу.
+    if (start.restored) return true;
+    return !!(start.urok && start.alarm && (env.then || "").trim() && start.frazy);
+  }
+
+  // Дежурные фразы — не подготовка, а первая запись. Поэтому они ложатся
+  // в архив как обычные записи и попадают в раздел, сборку и файл.
+  function renderFrazy() {
+    var box = document.getElementById("frazyBox");
+    box.innerHTML = "";
+
+    if (start.frazy) {
+      var done = document.createElement("p");
+      done.className = "sealed";
+      var n = archive.filter(function (e) { return e.section === "frazy"; }).length;
+      done.textContent = "Записано: " + n + " " + plural(n, ["фраза", "фразы", "фраз"]) +
+        ". Они уже в разделе «Дежурные фразы».";
+      box.appendChild(done);
+      return;
+    }
+
+    var ta = document.createElement("textarea");
+    ta.rows = 3;
+    ta.placeholder = "Просто устала\nЯ такая\nВозраст";
+    box.appendChild(ta);
+    setTimeout(function () { grow(ta); }, 0);
+    ta.addEventListener("input", function () { grow(ta); });
+
+    var btn = document.createElement("button");
+    btn.className = "btn ghost";
+    btn.type = "button";
+    btn.textContent = "Записать";
+    btn.addEventListener("click", function () {
+      var rows = ta.value.split("\n").map(function (x) { return x.trim(); })
+        .filter(function (x) { return x; });
+      if (!rows.length) { toast("Впиши хотя бы одну"); return; }
+
+      var now = Date.now();
+      rows.forEach(function (text, i) {
+        archive.push({
+          ts: now + i,
+          off: new Date(now).getTimezoneOffset(),
+          section: "frazy", now: text, before: "", said: "",
+          prep: 1               // подготовка: в раздел и сборку идёт, в норму дня — нет
+        });
+      });
+      persist();
+      start.frazy = true;
+      saveStart();
+      renderFrazy();
+      render();
+      toast(rows.length === 1 ? "Записано" : "Записано: " + rows.length);
+    });
+    box.appendChild(btn);
+  }
+
+  // Подготовка — это уже первый день, даже когда записей ещё нет: иначе
+  // отложившей первое аудио внизу нечего ждать, а мы ей это обещали.
+  function dayForAudio() {
+    return dayOfPractice() || (start.urok ? 1 : 0);
+  }
+
+  function renderDayAudio() {
+    var day = dayForAudio();
+    var items = document.querySelectorAll("#dayAudio .lesson-item");
+    var open = 0;
+    Array.prototype.forEach.call(items, function (el) {
+      var need = parseInt(el.getAttribute("data-day"), 10);
+      var show = day >= need;
+      el.hidden = !show;
+      if (show) open++;
+    });
+    document.getElementById("dayAudioCount").textContent = String(open);
+    document.getElementById("dayAudioBox").hidden = open === 0;
+  }
+
+  // Веха не привязана к суткам и не пропадает: дождётся того дня наблюдений,
+  // на который назначена, и будет висеть, пока человек её не закроет сам.
+  // За раз показываем одну, самую раннюю: вернувшейся после перерыва
+  // незачем получать три карточки стопкой.
+  var MILESTONES = [
+    { id: "bonus", card: "bonus",   btn: "bonusDone",   day: 3 },
+    { id: "fact",  card: "dayFact", btn: "dayFactDone", day: 5 },
+    { id: "week",  card: "dayWeek", btn: "dayWeekDone", day: 7 }
+  ];
+
+  function renderMilestones(ready, day) {
+    var current = null;
+    for (var i = 0; i < MILESTONES.length; i++) {
+      if (day >= MILESTONES[i].day && !seen[MILESTONES[i].id]) { current = MILESTONES[i]; break; }
+    }
+    MILESTONES.forEach(function (m) {
+      document.getElementById(m.card).hidden = !ready || !current || current.id !== m.id;
+    });
+  }
+
+  MILESTONES.forEach(function (m) {
+    document.getElementById(m.btn).addEventListener("click", function () {
+      seen[m.id] = 1;
+      saveSeen();
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  function renderIntro() {
+    var ready = startReady();
+    var day = dayOfPractice();
+
+    document.getElementById("intro").hidden = ready;
+    document.getElementById("startDone").hidden = !ready;
+    document.getElementById("startNext").hidden = ready;
+    renderMilestones(ready, day);
+    document.getElementById("daySbor").hidden = !ready || day < SBOR_DAY;
+
+    // Форма записи открывается только после подготовки
+    document.getElementById("ask").hidden = !ready;
+    document.getElementById("slots").hidden = !ready;
+    document.getElementById("saveBar").hidden = !ready;
+    document.getElementById("askNote").hidden = !ready;
+    document.getElementById("ruleNote").hidden = !ready;
+    // Нажавшая «послушаю позже» проходит дальше, и напомнить об этом больше
+    // негде: карточка подготовки исчезает навсегда. Строчка висит на экране
+    // записи, пока человек сам не отметит, что послушала.
+    document.getElementById("urokNote").hidden = !ready || start.urok !== "later";
+    document.getElementById("hardNote").hidden = !ready;
+
+    // Урок можно отложить: без наушников его не послушать, а покупку
+    // человек часто открывает в дороге. Шаг засчитывается, урок ждёт в списке.
+    var later = start.urok === "later";
+    document.getElementById("chkUrok").checked = start.urok === true;
+    document.getElementById("urokLaterNote").hidden = !later;
+    document.getElementById("urokLaterBtn").hidden = later || start.urok === true;
+    document.getElementById("chkAlarm").checked = !!start.alarm;
+  }
+
+  // Конверт: запечатывается в первый день, открывается в последний, на четырнадцатый.
+  // Конверт спрашивает один раз, если описание совсем короткое. Через две
+  // недели человек опишет ту же ситуацию заново, и вся продающая правда
+  // конверта в том, что разницу двух описаний не подделать, — а с одной
+  // строчкой сравнивать нечего. Спрашиваем и пропускаем: не замок, а вопрос.
+  // Тот же приём, что у правила трёх, и по той же причине: запрет на входе
+  // отсеет не халтурящих, а тех, кому трудно писать о себе.
+  var ENV_MIN = 80;
+  var envAsked = false;
+
+  function renderEnvelope() {
+    var box = document.getElementById("envBox");
+    box.innerHTML = "";
+
+    if ((env.then || "").trim()) {
+      var sealed = document.createElement("p");
+      sealed.className = "sealed";
+      sealed.textContent = "Конверт запечатан " + dateLong(new Date(env.ts || Date.now())) +
+        ". Откроется в последний день.";
+      box.appendChild(sealed);
+      return;
+    }
+
+    var ta = document.createElement("textarea");
+    ta.rows = 3;
+    ta.placeholder = "Что случилось, с кем, чем закончилось";
+    box.appendChild(ta);
+    setTimeout(function () { grow(ta); }, 0);
+    ta.addEventListener("input", function () { grow(ta); });
+
+    var btn = document.createElement("button");
+    btn.className = "btn ghost";
+    btn.type = "button";
+    btn.textContent = "Запечатать";
+    btn.addEventListener("click", function () {
+      var v = ta.value.trim();
+      if (!v) { toast("Сначала опиши ситуацию"); return; }
+      if (!envAsked && v.length < ENV_MIN) {
+        envAsked = true;
+        var warn = document.createElement("div");
+        warn.className = "warn";
+        warn.textContent = "Это точно всё? В последний день ты опишешь ту же " +
+          "ситуацию заново, и разница между двумя описаниями покажет, что " +
+          "изменилось. С одной строчкой сравнивать будет нечего. Допиши: что " +
+          "случилось, кто был рядом, чем закончилось.";
+        box.insertBefore(warn, btn);
+        btn.textContent = "Всё равно запечатать";
+        return;
+      }
+      env.then = v;
+      env.ts = Date.now();
+      saveEnv();
+      renderEnvelope();
+      renderIntro();
+      toast("Запечатано до последнего дня");
+    });
+    box.appendChild(btn);
+  }
+
+  // В последний день конверт вскрывается: старое описание рядом с новым.
+  // Старое показывается только после того, как написано сегодняшнее.
+  // Раньше оно лежало прямо над пустым полем — и весь смысл конверта пропадал:
+  // прочитав своё первое описание, второе пишешь от него, а не заново.
+  // Продающая строка «разницу между двумя описаниями подделать нельзя»
+  // держится ровно на том, что второе описание написано вслепую.
+  function renderEnvelopeOpen() {
+    var box = document.getElementById("envOpen");
+    box.innerHTML = "";
+
+    if (!(env.then || "").trim()) {
+      var none = document.createElement("p");
+      none.className = "card-note";
+      none.textContent = "Конверт остался пустым.";
+      box.appendChild(none);
+      return;
+    }
+
+    var ask = document.createElement("p");
+    ask.className = "card-note";
+    ask.textContent = "Опиши ту же ситуацию сегодня — как помнишь, своими словами. " +
+      "Первое описание запечатано и откроется, когда напишешь: иначе сравнивать будет нечего.";
+    box.appendChild(ask);
+
+    var ta = document.createElement("textarea");
+    ta.rows = 2;
+    ta.value = env.now || "";
+    box.appendChild(ta);
+
+    var openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "btn ghost";
+    box.appendChild(openBtn);
+
+    var thenBox = document.createElement("div");
+    box.appendChild(thenBox);
+
+    function refresh() {
+      if (env.opened) {
+        openBtn.hidden = true;
+        if (thenBox.firstChild) return;
+        var head = document.createElement("p");
+        head.className = "card-note";
+        head.textContent = "Что ты написала " + dateLong(new Date(env.ts)) + ":";
+        thenBox.appendChild(head);
+        var then = document.createElement("div");
+        then.className = "env-then";
+        then.textContent = env.then;
+        thenBox.appendChild(then);
+        return;
+      }
+      thenBox.innerHTML = "";
+      openBtn.hidden = false;
+      openBtn.disabled = !(env.now || "").trim();
+      openBtn.textContent = openBtn.disabled
+        ? "Сначала опиши сегодняшнюю" : "Открыть конверт";
+    }
+
+    openBtn.addEventListener("click", function () {
+      env.opened = true;
+      saveEnv();
+      refresh();
+    });
+
+    ta.addEventListener("input", function () {
+      grow(ta);
+      env.now = ta.value;
+      saveEnv();
+      refresh();
+    });
+
+    refresh();
+    setTimeout(function () { grow(ta); }, 0);
+  }
+
+  // Инструкция видна с первой же записи, а не в конце практикума:
+  // артефакт должен быть на глазах, пока он собирается.
+  function renderProgress() {
+    var box = document.getElementById("progress");
+    // Во время подготовки не показываем: фразы уже записаны, но человек
+    // ещё не начал, и «твоя инструкция началась» читалось бы неверно.
+    box.hidden = archive.length === 0 || !startReady();
+    if (box.hidden) return;
+
+    document.getElementById("progressTitle").textContent =
+      archive.length <= 3 ? "Твоя инструкция началась" : "Твоя инструкция";
+
+    var counts = countsBySection();
+    var sum = document.getElementById("progressSum");
+    sum.innerHTML = "";
+    SECTIONS.forEach(function (s) {
+      var el = document.createElement("span");
+      el.textContent = s.tag + " " + counts[s.id];
+      if (counts[s.id] === 0) el.className = "zero";
+      else if (counts[s.id] >= 5) el.className = "hot";
+      sum.appendChild(el);
+    });
+
+    // Счёт дней виден человеку: без него непонятно, где он в четырнадцати днях,
+    // раз они больше не совпадают с календарём.
+    var day = dayOfPractice();
+    document.getElementById("progressDays").textContent = day >= TOTAL_DAYS
+      ? "Дней наблюдений: " + day + ". Инструкция собрана — её можно сохранить файлом."
+      : "Дней наблюдений: " + day + " из " + TOTAL_DAYS + ". Считаются те дни, в которые ты записывала.";
+
+    renderDayGrid();
+  }
+
+  // Свои дни, показанные картинкой: человек видит, сколько набрал, одним взглядом.
+  // Клетка — день с записями, а не день календаря. Пустые клетки — то, что впереди.
+  function renderDayGrid() {
+    var host = document.getElementById("progressGrid");
+    host.innerHTML = "";
+
+    var byDay = {};
+    archive.forEach(function (e) {
+      var d = localDate(e);
+      var k = dayKey(d);
+      if (!byDay[k]) byDay[k] = { n: 0, d: d };
+      byDay[k].n++;
+    });
+
+    var keys = Object.keys(byDay).sort();
+    var cells = Math.max(TOTAL_DAYS, keys.length);
+    for (var i = 0; i < cells; i++) {
+      var cell = document.createElement("span");
+      cell.className = "daycell";
+      if (i < keys.length) {
+        var it = byDay[keys[i]];
+        cell.className = "daycell done";
+        cell.textContent = dateShort(it.d);
+        cell.title = "День " + (i + 1) + " · " + dateLong(it.d) + " · " +
+          it.n + " " + plural(it.n, ["запись", "записи", "записей"]);
+      } else {
+        cell.textContent = "·";
+        cell.title = "День " + (i + 1) + " — впереди";
+      }
+      host.appendChild(cell);
+    }
+  }
+
+  // Динамика продукта живёт здесь: это видно только тому, кто накопил.
+  // Про форму наблюдения — да. Про содержание жизни — нет: повторяющиеся имена
+  // человек находит сам в сборке, это и есть то, ради чего он вёл наблюдения.
+  function insights() {
+    var out = [];
+    var days = uniqueDays();
+    var counts = countsBySection();
+    var used = SECTIONS.filter(function (s) { return counts[s.id] > 0; }).length;
+
+    if (days >= 2 && used <= 2) {
+      out.push("Ты пишешь только в " + used + " " + plural(used, ["раздел", "раздела", "разделов"]) + " из восьми.");
+    }
+
+    if (days >= 5) {
+      var empty = SECTIONS.filter(function (s) { return !s.wide && counts[s.id] === 0; });
+      if (empty.length === 1) {
+        out.push("В разделе «" + empty[0].name + "» за " + days + " " +
+          plural(days, ["день", "дня", "дней"]) + " ни одной записи.");
+      } else if (empty.length > 1) {
+        out.push("Разделов без единой записи: " + empty.length + ".");
+      }
+    }
+
+    return out.slice(0, 2);
+  }
+
+  function renderInsight() {
+    var box = document.getElementById("insight");
+    var list = (archive.length >= 6 && startReady()) ? insights() : [];
+    box.hidden = list.length === 0;
+    if (box.hidden) return;
+
+    box.innerHTML = "";
+    var h = document.createElement("h2");
+    h.textContent = "Что уже видно";
+    box.appendChild(h);
+    list.forEach(function (t) {
+      var p = document.createElement("p");
+      p.textContent = t;
+      box.appendChild(p);
+    });
+  }
+
+  function renderCollectBtn() {
+    document.getElementById("collectBtn").textContent =
+      dayOfPractice() >= SBOR_DAY ? "Собрать всё для сборки" : "Собрать всё, что записано";
+  }
+
+  function renderCopyState() {
+    var el = document.getElementById("copyState");
+    if (!archive.length) { el.textContent = ""; return; }
+    if (!lastSent) {
+      el.textContent = "Себе ещё ни разу не отправляла. Телефон — черновик, канал — оригинал.";
+      el.className = "save-hint" + (archive.length >= 6 ? " copy-warn" : "");
+      return;
+    }
+    var a = new Date(lastSent); a.setHours(0, 0, 0, 0);
+    var b = new Date(); b.setHours(0, 0, 0, 0);
+    var d = Math.round((b - a) / 86400000);
+    el.textContent = d === 0 ? "Себе отправляла сегодня."
+      : d === 1 ? "Себе отправляла вчера."
+      : d === 2 ? "Себе отправляла позавчера."
+      : "Себе отправляла " + d + " " + plural(d, ["день", "дня", "дней"]) + " назад.";
+    // Копии нет третий день, а записей уже накопилось — говорим об этом заметно
+    el.className = "save-hint" + (d >= 3 && archive.length >= 6 ? " copy-warn" : "");
+  }
+
+  // День практикума — это день, в который что-то записано, а не день календаря.
+  // Продукт самостоятельный, к эфиру не привязан, догонять расписание не нужно.
+  // Зашла и не записала — день не наступил. Пропала на неделю и вернулась —
+  // продолжает с того места, где остановилась. Четырнадцать дней наблюдений
+  // набираются за столько времени, сколько нужно этому человеку.
+  function dayOfPractice() {
+    return uniqueDays();
+  }
+
+  var TOTAL_DAYS = 14;      // столько дней с записями собирают инструкцию
+  var SBOR_DAY = 13;        // сборка — накануне последнего
+
+  function renderFinal() {
+    var day = dayOfPractice();
+    var fin = document.getElementById("final");
+    fin.hidden = day < TOTAL_DAYS;
+    // Отзыв просим в последний день — когда человек уже увидел результат,
+    // а не когда мы захотели его получить.
+    document.getElementById("feedback").hidden = day < TOTAL_DAYS;
+
+    if (!fin.hidden) renderEnvelopeOpen();
+
+    // Имена — материал сборки, вместе с остальной сборкой.
+    if (day >= SBOR_DAY) {
+      var hint = document.getElementById("namesHint");
+      var names = nameCounts();
+      hint.hidden = names.length === 0;
+      if (names.length) {
+        hint.textContent = "Чаще всего рядом — проверь сама: " +
+          names.map(function (x) { return x.name + " (" + x.n + ")"; }).join(" · ");
+      }
+    }
+  }
+
+  // Счёт за сегодня, а не за все дни: норма дня — три записи,
+  // и человек обычно не помнит, сколько уже сделал.
+  // Дежурные фразы из подготовки в норму не идут: иначе в первый день
+  // норма закрывается двумя наблюдениями вместо трёх.
+  function renderToday() {
+    var el = document.getElementById("todayCount");
+    if (!startReady()) { el.hidden = true; return; }
+    var today = dayKey(new Date());
+    var n = archive.filter(function (e) {
+      return !e.prep && dayKey(localDate(e)) === today;
+    }).length;
+    el.hidden = n === 0;
+    // Норму показываем, пока она не выполнена. Дальше — просто счёт:
+    // три записи это минимум, а «10 из 3» читается как сбой.
+    el.textContent = n < 3
+      ? "Сегодня: " + n + " из 3"
+      : "Сегодня: " + n + " " + plural(n, ["запись", "записи", "записей"]);
+  }
+
+  function renderSlot(slot, i) {
+    var box = document.createElement("section");
+    box.className = "slot" + (slot.open ? " active" : "") + (slot.done ? " filled" : "");
+
+    var s = slot.section ? sectionById(slot.section) : null;
+
+    var head = document.createElement("button");
+    head.className = "slot-head";
+    head.type = "button";
+    head.setAttribute("aria-expanded", slot.open ? "true" : "false");
+
+    var n = document.createElement("span");
+    n.className = "slot-n";
+    n.textContent = String(i + 1);
+
+    var title = document.createElement("span");
+    title.className = "slot-title";
+    var b = document.createElement("b");
+    b.textContent = slot.done && s ? s.name : "Запись " + (i + 1);
+    title.appendChild(b);
+    if (slot.done) {
+      var sub = document.createElement("span");
+      sub.textContent = slot.now;
+      title.appendChild(sub);
+    }
+
+    var chev = document.createElement("span");
+    chev.className = "chev";
+    chev.textContent = slot.done ? (slot.open ? "свернуть" : "изменить") : "";
+
+    head.appendChild(n); head.appendChild(title); head.appendChild(chev);
+    head.addEventListener("click", function () {
+      if (slot.open && !slot.done) return;      // не сворачиваем пустое
+      var wasOpen = slot.open;
+      slots.forEach(function (o) { o.open = false; });
+      slot.open = !wasOpen;
+      render();
+    });
+    box.appendChild(head);
+
+    var body = document.createElement("div");
+    body.className = "slot-body";
+    body.hidden = !slot.open;
+
+    // выбор раздела
+    var ask = document.createElement("p");
+    ask.className = "ask";
+    ask.textContent = "Куда это?";
+    body.appendChild(ask);
+
+    var chips = document.createElement("div");
+    chips.className = "chips";
+    SECTIONS.forEach(function (sec) {
+      var c = document.createElement("button");
+      c.className = "chip" + (sec.wide ? " wide" : "");
+      c.type = "button";
+      c.setAttribute("aria-pressed", slot.section === sec.id ? "true" : "false");
+      var nm = document.createElement("span");
+      nm.textContent = sec.name;
+      var tg = document.createElement("small");
+      tg.textContent = sec.tag;
+      c.appendChild(nm); c.appendChild(tg);
+      c.addEventListener("click", function () {
+        slot.section = sec.id;
+        render();
+        var fresh = slotsEl.children[i];            // после render DOM пересобран
+        var ta = fresh && fresh.querySelector("textarea");
+        if (ta) ta.focus();
+      });
+      chips.appendChild(c);
+    });
+    body.appendChild(chips);
+
+    if (slot.section) {
+      var sec = sectionById(slot.section);
+
+      var lessonBtn = document.createElement("button");
+      lessonBtn.className = "lesson-btn";
+      lessonBtn.type = "button";
+      lessonBtn.textContent = (slot.lessonOpen ? "▾ " : "▸ ") + "Про этот раздел";
+      lessonBtn.addEventListener("click", function () { slot.lessonOpen = !slot.lessonOpen; render(); });
+      body.appendChild(lessonBtn);
+
+      if (slot.lessonOpen) body.appendChild(lessonBlock(sec));
+
+      body.appendChild(makeField(
+        "Что я заметила",
+        sec.hint + " И когда, если помнишь.",
+        slot.now,
+        sec.ex[0],
+        function (v) { slot.now = v; updateReady(); }
+      ));
+
+      // Событие бывает не у всякого состояния: голод весь день, тяжесть без
+      // причины, фон недели. Раньше поле молча ждало события, и человек с
+      // длящимся состоянием упирался. Фон — законный ответ, и он проверяемый:
+      // если он повторится, это будет видно по записям, а не по догадке.
+      body.appendChild(makeField(
+        "После чего · с кем",
+        "Событие или фон: «после совещания», «третий день перед месячными», «вторая неделя без выходных». Не знаешь — так и напиши." +
+          (sec.name_needed ? " Если рядом был человек — напиши имя." : ""),
+        slot.before,
+        sec.ex[1],
+        function (v) {
+          slot.before = v;
+          // Предупреждение снимаем сразу, а не после сохранения.
+          var w = box.querySelector(".warn");
+          if (w) w.hidden = !!v.trim();
+        }
+      ));
+
+      body.appendChild(makeField(
+        "Что я себе сказала или сделала",
+        "",
+        slot.said,
+        sec.ex[2],
+        function (v) { slot.said = v; }
+      ));
+
+      if (slot.asked) {
+        var warn = document.createElement("div");
+        warn.className = "warn";
+        warn.textContent = missingText(slot);
+        body.appendChild(warn);
+      }
+
+      var ok = document.createElement("button");
+      ok.className = "btn";
+      ok.type = "button";
+      ok.textContent = slot.asked ? "Всё равно сохранить" : "Готово";
+      ok.disabled = !slot.now.trim();
+      ok.addEventListener("click", function () {
+        if (!slot.now.trim()) return;
+        // Спрашиваем один раз и не мешаем: правило трёх — критерий, а не замок.
+        if (!slot.asked && missingText(slot)) {
+          slot.asked = true;
+          render();
+          return;
+        }
+        slot.done = true;
+        slot.open = false;
+        if (!slot.ts) slot.ts = Date.now();
+        commit();
+        render();
+      });
+      body.appendChild(ok);
+
+      function updateReady() { ok.disabled = !slot.now.trim(); }
+    }
+
+    box.appendChild(body);
+    return box;
+  }
+
+  // Аудио лежит рядом со страницей: audio/<id>.mp3. Пока файла нет —
+  // остаётся текст, и урок всё равно работает.
+  function lessonBlock(sec) {
+    var box = document.createElement("div");
+    box.className = "lesson";
+
+    var au = document.createElement("audio");
+    au.controls = true;
+    au.preload = "none";
+    au.src = "audio/" + sec.id + ".mp3";
+    au.addEventListener("error", function () {
+      if (au.parentNode) au.parentNode.removeChild(au);
+      var miss = document.createElement("p");
+      miss.className = "lesson-miss";
+      miss.textContent = "Аудио скоро появится — пока текстом.";
+      box.insertBefore(miss, box.firstChild);
+    });
+    box.appendChild(au);
+
+    // Урок может состоять из нескольких абзацев — разделяем пустой строкой.
+    String(sec.lesson).split("\n\n").forEach(function (part) {
+      var p = document.createElement("p");
+      p.textContent = part;
+      box.appendChild(p);
+    });
+
+    return box;
+  }
+
+  function makeField(labelText, tipText, value, placeholder, onInput) {
+    var wrap = document.createElement("div");
+    wrap.className = "field";
+
+    var lab = document.createElement("label");
+    lab.textContent = labelText;
+    wrap.appendChild(lab);
+
+    if (tipText) {
+      var tip = document.createElement("div");
+      tip.className = "tip";
+      tip.textContent = tipText;
+      wrap.appendChild(tip);
+    }
+
+    var ta = document.createElement("textarea");
+    ta.rows = 1;
+    ta.value = value;
+    ta.placeholder = placeholder;
+    ta.addEventListener("input", function () { grow(ta); onInput(ta.value); });
+    wrap.appendChild(ta);
+    setTimeout(function () { grow(ta); }, 0);
+
+    return wrap;
+  }
+
+  // ---------- отправка ----------
+
+  // Запись ложится в хранилище по «Готово», а не по отправке: закрытая
+  // вкладка не должна стоить записи. Отправка себе — копия в канал.
+  function commit() {
+    var now = Date.now();
+    slots.forEach(function (s) {
+      if (!s.done) return;
+      if (s.entry) {                 // уже в архиве — правки переносим туда же
+        s.entry.section = s.section;
+        s.entry.now = s.now;
+        s.entry.before = s.before;
+        s.entry.said = s.said;
+        return;
+      }
+      var e = {
+        ts: s.ts || now,
+        off: new Date(s.ts || now).getTimezoneOffset(),
+        section: s.section, now: s.now, before: s.before, said: s.said
+      };
+      archive.push(e);
+      s.entry = e;
+    });
+    persist();
+  }
+
+  function afterSend(msg) {
+    commit();
+    markSent();
+    toast(msg);
+    slots = [newSlot(true)];
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;left:0;top:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  // Буфер обмена отказывает по-разному в зависимости от браузера и от того,
+  // открыта ли страница во фрейме. Поэтому всегда есть запасной путь.
+  function copyText(text) {
+    return new Promise(function (resolve, reject) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(resolve, function () {
+          legacyCopy(text) ? resolve() : reject();
+        });
+      } else {
+        legacyCopy(text) ? resolve() : reject();
+      }
+    });
+  }
+
+  function copyOrFail(text, msg) {
+    copyText(text).then(
+      function () { afterSend(msg || "Скопировано"); },
+      function () { toast("Не вышло скопировать — выдели текст руками"); }
+    );
+  }
+
+  document.getElementById("sendTg").addEventListener("click", function () {
+    var text = sessionText();
+    if (!text) return;
+    var url = "https://t.me/share/url?url=&text=" + encodeURIComponent(text);
+    var w = window.open(url, "_blank");
+    if (w) {
+      commit();
+      markSent();
+      slots = [newSlot(true)];
+      render();
+      toast("Открываю Telegram");
+    } else {
+      // всплывающее окно заблокировано или мы во фрейме
+      copyOrFail(text, "Скопировано — вставь в свой канал");
+    }
+  });
+
+  document.getElementById("sendShare").addEventListener("click", function () {
+    var text = sessionText();
+    if (!text) return;
+    if (navigator.share) {
+      navigator.share({ text: text }).then(
+        function () { afterSend("Отправлено"); },
+        function (err) {
+          if (err && err.name === "AbortError") return;   // передумала
+          copyOrFail(text, "Скопировано — вставь в заметки");
+        }
+      );
+    } else {
+      copyOrFail(text, "Скопировано — вставь в заметки");
+    }
+  });
+
+  document.getElementById("sendCopy").addEventListener("click", function () {
+    var text = sessionText();
+    if (!text) return;
+    copyOrFail(text);
+  });
+
+  // ---------- архив ----------
+
+  var archView = "sections";
+  var archQuery = "";
+
+  function matchesQuery(e) {
+    if (!archQuery) return true;
+    var hay = ((e.now || "") + " " + (e.before || "") + " " + (e.said || "")).toLowerCase();
+    return hay.indexOf(archQuery) !== -1;
+  }
+
+  // «Пока не знаю» разбирается первым: это записи, которым человек не нашёл места,
+  // и в них обычно самое сырое.
+  function orderedSections() {
+    return SECTIONS.filter(function (s) { return s.wide; })
+      .concat(SECTIONS.filter(function (s) { return !s.wide; }));
+  }
+
+  function countsBySection() {
+    var c = {};
+    SECTIONS.forEach(function (s) { c[s.id] = 0; });
+    archive.forEach(function (e) { if (c[e.section] !== undefined) c[e.section]++; });
+    return c;
+  }
+
+  // Имена ищем как слова с большой буквы: в поле «после чего · с кем»
+  // они и есть тот сигнал, ради которого делается сборка.
+  var STOP = ["После","Сказала","Потом","Когда","Если","Это","Она","Он","Мне","Меня","Себе","Весь","Всю","Там","Тут","Что","Как","Дома","Утром","Днём","Днем","Вечером","Ночью"];
+
+  // Ради чего файл вообще открывают. Это не оглавление и не навигация:
+  // разделов здесь нет намеренно. Человеку в трудную минуту не надо
+  // выбирать полку — инструкция вся про эти двенадцать минут целиком.
+  //
+  // Список работает узнаванием: строку должно быть можно сказать вслух
+  // подруге. Описание поведения, словарь психолога и лозунг про боль
+  // здесь уже пробовали — мимо всех трёх проходят.
+  var WHEN = [
+    "Когда думаешь: «Со мной что-то не так».",
+    "Когда просто плохо, а почему — непонятно.",
+    "Когда не можешь ответить, чего хочешь.",
+    "Когда надо решить, соглашаться или нет.",
+    "Когда нет сил и нужно восстановиться.",
+    "Когда уже не знаешь, чему верить — мыслям или ощущениям.",
+    "Когда опять сорвалась и ругаешь себя.",
+    "Когда не понимаешь, почему опять так вышло.",
+    "Когда снова думаешь, что проблема в тебе.",
+    "Когда не понимаешь, почему так сильно реагируешь.",
+    "Когда снова согласилась, хотя не хотела.",
+    "Когда устала наступать на одни и те же грабли."
+  ];
+
+  // Имена обещаны в первом аудио отдельным списком — значит в файле они
+  // должны быть сведены, а не рассыпаны по ячейкам таблиц.
+  // По-русски имя в записи почти никогда не стоит в именительном:
+  // «Ирина попросила», «после разговора с Ириной», «позвонила Ирине».
+  // Считать формы порознь — значит не досчитать ни одну до трёх и не
+  // показать в файле никого, хотя человек имена писал исправно. Поэтому
+  // формы сводятся по основе: два прохода снимают падежное окончание.
+  var NAME_TAILS = ["ою", "ею", "ой", "ей", "ом", "ем"];
+  var NAME_VOWELS = "аяуюыиеёо";
+
+  function nameStem(w) {
+    var s = w.toLowerCase();
+    for (var pass = 0; pass < 2; pass++) {
+      var cut = "";
+      for (var i = 0; i < NAME_TAILS.length; i++) {
+        if (s.length - NAME_TAILS[i].length >= 2 &&
+            s.slice(-NAME_TAILS[i].length) === NAME_TAILS[i]) { cut = NAME_TAILS[i]; break; }
+      }
+      if (cut) { s = s.slice(0, -cut.length); continue; }
+      if (s.length > 2 && NAME_VOWELS.indexOf(s.charAt(s.length - 1)) !== -1) {
+        s = s.slice(0, -1);
+      } else break;
+    }
+    return s;
+  }
+
+  // Слова записи, годные в имена: с заглавной, не служебные, не короткие.
+  function nameWords(e) {
+    return ((e.before || "") + " " + (e.said || "")).split(/[^А-Яа-яЁёA-Za-z-]+/)
+      .filter(function (w) {
+        if (w.length < 3) return false;
+        if (w[0] !== w[0].toUpperCase() || w[0] === w[0].toLowerCase()) return false;
+        return STOP.indexOf(w) === -1;
+      });
+  }
+
+  function nameRows() {
+    return nameCounts().map(function (x) {
+      var per = {};
+      archive.forEach(function (e) {
+        var hit = nameWords(e).some(function (w) { return nameStem(w) === x.stem; });
+        if (!hit) return;
+        per[e.section] = (per[e.section] || 0) + 1;
+      });
+      var where = Object.keys(per)
+        .sort(function (a, b) { return per[b] - per[a]; })
+        .map(function (id) {
+          var s = sectionById(id);
+          return (s ? (s.full || s.name) : id) + " · " + per[id];
+        });
+      return { name: x.name, n: x.n, where: where.join(", ") };
+    });
+  }
+
+  function nameCounts() {
+    var c = {};                              // основа → сколько записей
+    var forms = {};                          // основа → какими словами писала
+    archive.forEach(function (e) {
+      var seen = {};
+      nameWords(e).forEach(function (w) {
+        var stem = nameStem(w);
+        if (stem.length < 2) return;
+        forms[stem] = forms[stem] || {};
+        forms[stem][w] = (forms[stem][w] || 0) + 1;
+        if (seen[stem]) return;              // одно упоминание на запись
+        seen[stem] = true;
+        c[stem] = (c[stem] || 0) + 1;
+      });
+    });
+    return Object.keys(c)
+      .filter(function (s) { return c[s] >= 3; })
+      .sort(function (a, b) { return c[b] - c[a]; })
+      .map(function (s) {
+        // Показываем ту форму, которой человек пользуется чаще всего:
+        // выдумывать именительный падеж мы не умеем и не беремся.
+        var best = "", n = -1;
+        Object.keys(forms[s]).forEach(function (w) {
+          if (forms[s][w] > n) { n = forms[s][w]; best = w; }
+        });
+        return { name: best, stem: s, n: c[s] };
+      });
+  }
+
+  function renderArchive() {
+    document.getElementById("archCount").textContent = String(archive.length);
+    var list = document.getElementById("archList");
+    list.innerHTML = "";
+    var shown = archive.filter(matchesQuery);
+
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
+      t.setAttribute("aria-pressed", t.getAttribute("data-view") === archView ? "true" : "false");
+    });
+
+    if (!shown.length) {
+      var p = document.createElement("p");
+      p.className = "arch-item";
+      p.style.cssText = "border-left:0;padding-left:0";
+      p.textContent = archive.length
+        ? "По этому слову ничего не нашлось."
+        : "Пока пусто. Здесь копится всё, что ты записала.";
+      list.appendChild(p);
+      return;
+    }
+
+    // сводка: сколько где — видно с одного взгляда, даже когда записей много
+    var counts = countsBySection();
+    var sum = document.createElement("div");
+    sum.className = "sum";
+    SECTIONS.forEach(function (s) {
+      var el = document.createElement("span");
+      el.textContent = s.tag + " " + counts[s.id];
+      if (counts[s.id] === 0) el.className = "zero";
+      else if (counts[s.id] >= 5) el.className = "hot";
+      sum.appendChild(el);
+    });
+    list.appendChild(sum);
+
+    var groups = {};
+    var order = [];
+
+    if (archView === "sections") {
+      orderedSections().forEach(function (s) {
+        if (!shown.some(function (e) { return e.section === s.id; })) return;
+        order.push(s.tag + " · " + s.name);
+        groups[s.tag + " · " + s.name] = shown.filter(function (e) { return e.section === s.id; });
+      });
+    } else {
+      shown.forEach(function (e) {
+        var k = dateLong(localDate(e));
+        if (!groups[k]) { groups[k] = []; order.push(k); }
+        groups[k].push(e);
+      });
+    }
+
+    order.forEach(function (key) {
+      var g = document.createElement("div");
+      g.className = "arch-group";
+      var h = document.createElement("h3");
+      h.textContent = key + " — " + groups[key].length;
+      g.appendChild(h);
+      groups[key].forEach(function (e) {
+        var s = sectionById(e.section);
+        var item = document.createElement("div");
+        item.className = "arch-item";
+        var t = document.createElement("time");
+        var d = localDate(e);
+        t.textContent = archView === "sections"
+          ? dateShort(d) + ", " + timeShort(d)
+          : timeShort(d) + " · " + (s ? s.tag : "");
+        item.appendChild(t);
+        item.appendChild(document.createTextNode(e.now));
+        g.appendChild(item);
+      });
+      list.appendChild(g);
+    });
+
+    // Имена здесь не показываем — они ждут сборки. См. insights().
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) {
+    t.addEventListener("click", function () {
+      archView = t.getAttribute("data-view");
+      renderArchive();
+    });
+  });
+
+  function collectText() {
+    var counts = countsBySection();
+    var days = {};
+    archive.forEach(function (e) { days[dayKey(localDate(e))] = 1; });
+
+    var out = ["Инструкция ко мне — сборка"];
+    out.push("Записей: " + archive.length + " · дней: " + Object.keys(days).length);
+    out.push("");
+
+    out.push("Сколько где:");
+    out.push(SECTIONS.map(function (s) { return s.tag + " " + counts[s.id]; }).join(" · "));
+    out.push("");
+
+    // Имена — только со сборки. Кнопка доступна всегда, и без этой
+    // проверки сборка выдавала бы главный результат на третий день.
+    if (dayOfPractice() >= SBOR_DAY) {
+      var names = nameCounts();
+      if (names.length) {
+        out.push("Чаще всего рядом — проверь сама:");
+        out.push(names.map(function (x) { return x.name + " — " + x.n; }).join(" · "));
+        out.push("");
+      }
+    }
+
+    orderedSections().forEach(function (sec) {
+      var mine = archive.filter(function (e) { return e.section === sec.id; });
+      if (sec.wide && !mine.length) return;
+      out.push("— — —");
+      out.push(sec.tag + " " + sec.name + " (" + mine.length + ")");
+      if (sec.wide && dayOfPractice() >= SBOR_DAY) out.push("начни с них: этим записям ты не нашла места");
+      if (!mine.length) {
+        out.push("пусто — это тоже ответ");
+      } else {
+        mine.forEach(function (e) {
+          var line = dateShort(localDate(e)) + " · " + e.now;
+          if (e.before) line += " · после: " + e.before;
+          if (e.said) line += " · сказала: " + e.said;
+          out.push(line);
+        });
+      }
+      out.push("");
+    });
+
+    return out.join("\n").trim();
+  }
+
+  document.getElementById("archSearch").addEventListener("input", function () {
+    archQuery = this.value.trim().toLowerCase();
+    renderArchive();
+  });
+
+  function doCollect() {
+    if (!archive.length) { toast("Записей пока нет"); return; }
+    var text = collectText();
+    if (navigator.share) {
+      navigator.share({ text: text }).then(
+        function () { toast("Отправлено"); },
+        function (err) {
+          if (err && err.name === "AbortError") return;
+          copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+        }
+      );
+    } else {
+      copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+    }
+  }
+
+  document.getElementById("collectBtn").addEventListener("click", doCollect);
+  document.getElementById("collectBtn2").addEventListener("click", doCollect);
+  document.getElementById("collectBtn3").addEventListener("click", doCollect);
+
+  // ---------- старт ----------
+
+  // Окно наблюдения — не точка, а промежуток от прошлого сигнала до сейчас.
+  // Показываем его прямо в вопросе, чтобы не объяснять словами.
+  // Окно идёт от прошлого сигнала (10:00 · 15:00 · 20:00), а не от прошлой записи.
+  // Словами, а не часами: «за пять часов» врёт, если человек пришёл не вовремя.
+  function windowLabel(d) {
+    var h = d.getHours();
+    if (h < 15) return "с вечера";     // сигнал 10:00 — окно с прошлого вечера, через ночь
+    if (h < 20) return "с утра";       // сигнал 15:00 — окно с 10:00
+    return "днём";                     // сигнал 20:00 — окно с 15:00
+  }
+
+  function stamp() {
+    var d = new Date();
+    document.getElementById("stamp").textContent = dateLong(d) + " · " + timeShort(d);
+    document.getElementById("ask").textContent =
+      "Что с тобой сейчас и что было " + windowLabel(d) + "?";
+    // Две двери, и они не равны. Записывать в момент — точнее всего, но
+    // ловят себя не все и не всегда. Сигнал закрывает то, что не поймалось:
+    // в исследованиях это разные схемы (по событию и по сигналу), и их
+    // сводят вместе именно для этого. Молчать про иерархию нельзя — иначе
+    // человек решит, что записывать можно только по звонку.
+    document.getElementById("askNote").textContent =
+      "Заметила прямо сейчас — записывай сразу, не жди сигнала: так точнее всего. " +
+      "Сигнал на случай, если не заметила, — тогда вспомни, что было " + windowLabel(d) + ".";
+  }
+
+  document.getElementById("introLesson").appendChild(lessonBlock(INTRO));
+  document.getElementById("methodLesson").appendChild(lessonBlock(METHOD));
+  document.getElementById("howLesson").appendChild(lessonBlock(HOW));
+  document.getElementById("dayFactLesson").appendChild(lessonBlock(DAY_FACT));
+  document.getElementById("bonusLesson").appendChild(lessonBlock(BONUS));
+  document.getElementById("weekLesson").appendChild(lessonBlock(DAY_WEEK));
+  document.getElementById("sborLesson").appendChild(lessonBlock(DAY_SBOR));
+  document.getElementById("itogLesson").appendChild(lessonBlock(DAY_ITOG));
+
+  // Три повторяющихся события на месяц: практикум идёт по записям и может
+  // растянуться, а без сигналов он разваливается. Время «плавающее», без пояса:
+  // событие срабатывает в 10:00 по часам того телефона, где лежит календарь.
+  function icsFile() {
+    var now = new Date();
+    var lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//instrukciya-ko-mne//RU",
+      "CALSCALE:GREGORIAN"
+    ];
+
+    function stampUtc(d) {
+      return d.getUTCFullYear() +
+        two(d.getUTCMonth() + 1) + two(d.getUTCDate()) + "T" +
+        two(d.getUTCHours()) + two(d.getUTCMinutes()) + two(d.getUTCSeconds()) + "Z";
+    }
+
+    [10, 15, 20].forEach(function (hour, i) {
+      // Имя не start: так называется состояние подготовки первого дня
+      var begin = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0);
+      if (begin <= now) begin.setDate(begin.getDate() + 1);   // время сегодня уже прошло
+
+      var local = begin.getFullYear() + two(begin.getMonth() + 1) + two(begin.getDate()) +
+        "T" + two(hour) + "0000";
+
+      lines.push(
+        "BEGIN:VEVENT",
+        "UID:instrukciya-" + hour + "-" + now.getTime() + "@vasilevagalina.ru",
+        "DTSTAMP:" + stampUtc(now),
+        "DTSTART:" + local,
+        "DURATION:PT5M",
+        "RRULE:FREQ=DAILY;COUNT=30",
+        "SUMMARY:Инструкция ко мне — запись",
+        "DESCRIPTION:Остановись на минуту. Что с тобой сейчас — а если ловила себя раньше, запиши то, что было с прошлого сигнала.",
+        "BEGIN:VALARM",
+        "TRIGGER:PT0M",
+        "ACTION:DISPLAY",
+        "DESCRIPTION:Инструкция ко мне",
+        "END:VALARM",
+        "END:VEVENT"
+      );
+    });
+
+    lines.push("END:VCALENDAR");
+    return lines.join("\r\n");
+  }
+
+  function downloadIcs() {
+    var blob = new Blob([icsFile()], { type: "text/calendar;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "Инструкция — напоминания.ics";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    toast("Открой файл — календарь предложит добавить");
+  }
+
+  document.getElementById("icsBtn").addEventListener("click", function () {
+    downloadIcs();
+    start.alarm = true;          // файл скачан — считаем, что сигналы поставлены
+    saveStart();
+    renderIntro();
+  });
+  document.getElementById("icsBtn2").addEventListener("click", downloadIcs);
+
+  // render, а не renderIntro: с первым аудио меняется и список «Аудио по дням»
+  document.getElementById("chkUrok").addEventListener("change", function () {
+    start.urok = this.checked;
+    saveStart();
+    render();
+  });
+
+  document.getElementById("urokLaterBtn").addEventListener("click", function () {
+    start.urok = "later";
+    saveStart();
+    render();
+  });
+
+  document.getElementById("urokNoteDone").addEventListener("click", function () {
+    start.urok = true;
+    saveStart();
+    render();
+  });
+
+  document.getElementById("chkAlarm").addEventListener("change", function () {
+    start.alarm = this.checked;
+    saveStart();
+    renderIntro();
+  });
+
+  // Финал: повторения и четыре вопроса пишет человек, машина только считает.
+  var FINAL_QS = [
+    { id: "q1", q: "Какая из моих дежурных фраз оказалась неправдой — и что было на самом деле?", from: "#фразы и повторения" },
+    { id: "q2", q: "Что чаще всего стоит за моим «просто устала»?", from: "#тело и #силы" },
+    { id: "q3", q: "Рядом с кем и в каких ситуациях я перестаю быть собой?", from: "#роли" },
+    { id: "q4", q: "Что за эти дни разозлило меня сильнее всего — и что это говорит о том, что для меня важно?", from: "#нет и #реакции" }
+  ];
+
+  var finalData = { povtor: [{}, {}, {}], answers: {} };
+
+  function loadFinal() {
+    try {
+      var raw = localStorage.getItem(KEY_FINAL);
+      if (raw) {
+        var d = JSON.parse(raw);
+        if (d && d.povtor) finalData = d;
+      }
+    } catch (e) {}
+    normalizeFinal();
+  }
+
+  // Форма финала всегда рисует три строки повторений, поэтому они должны быть
+  // на месте, откуда бы данные ни пришли — из хранилища или из файла.
+  function normalizeFinal() {
+    if (!finalData || typeof finalData !== "object") finalData = {};
+    if (!finalData.answers) finalData.answers = {};
+    if (!finalData.povtor || !finalData.povtor.length) finalData.povtor = [];
+    while (finalData.povtor.length < 3) finalData.povtor.push({});
+  }
+
+  // Своё не перетираем файлом: восстанавливаем финал, только если он пуст.
+  function finalEmpty() {
+    var answers = finalData.answers || {};
+    var written = Object.keys(answers).some(function (k) {
+      return (answers[k] || "").trim();
+    });
+    if (written) return false;
+    return !(finalData.povtor || []).some(function (r) {
+      return (r.always || "").trim() || (r.from || "").trim() ||
+             (r.who || "").trim() || (r.input || "").trim();
+    });
+  }
+
+  function saveFinal() {
+    try { localStorage.setItem(KEY_FINAL, JSON.stringify(finalData)); } catch (e) {}
+  }
+
+  function buildFinalForm() {
+    var box = document.getElementById("povtorBox");
+    box.innerHTML = "";
+    for (var i = 0; i < 3; i++) {
+      (function (n) {
+        var row = document.createElement("div");
+        row.className = "povtor-row";
+        [
+          { k: "always", ph: "У меня всегда…" },
+          { k: "from", ph: "Откуда это видно" },
+          { k: "who", ph: "С кем чаще всего" },
+          // Седьмая операция: увидеть мало, нужно место приложения силы.
+          // Без неё файл описывает человека и на этом заканчивается.
+          { k: "input", ph: "Где мой вход" }
+        ].forEach(function (f) {
+          var ta = document.createElement("textarea");
+          ta.rows = 1;
+          ta.placeholder = f.ph;
+          ta.value = finalData.povtor[n][f.k] || "";
+          ta.addEventListener("input", function () {
+            grow(ta);
+            finalData.povtor[n][f.k] = ta.value;
+            saveFinal();
+          });
+          row.appendChild(ta);
+          setTimeout(function () { grow(ta); }, 0);
+        });
+        box.appendChild(row);
+      })(i);
+    }
+
+    var qs = document.getElementById("finalQs");
+    qs.innerHTML = "";
+    FINAL_QS.forEach(function (item) {
+      var h = document.createElement("h3");
+      h.className = "fin-h";
+      h.textContent = item.q;
+      qs.appendChild(h);
+
+      var note = document.createElement("p");
+      note.className = "card-note";
+      note.textContent = "Смотри: " + item.from;
+      qs.appendChild(note);
+
+      var ta = document.createElement("textarea");
+      ta.rows = 1;
+      ta.value = finalData.answers[item.id] || "";
+      ta.addEventListener("input", function () {
+        grow(ta);
+        finalData.answers[item.id] = ta.value;
+        saveFinal();
+      });
+      qs.appendChild(ta);
+      setTimeout(function () { grow(ta); }, 0);
+    });
+  }
+
+  (function () {
+    var ta = document.getElementById("finalQ");
+    try { ta.value = localStorage.getItem(KEY_Q) || ""; } catch (e) {}
+    grow(ta);
+    ta.addEventListener("input", function () {
+      grow(ta);
+      try { localStorage.setItem(KEY_Q, ta.value); } catch (e) {}
+    });
+    document.getElementById("finalSend").addEventListener("click", function () {
+      var v = ta.value.trim();
+      if (!v) { toast("Сначала напиши, с чем хочешь разобраться"); return; }
+      var text = "С чем я хочу разобраться глубже:\n" + v;
+      if (navigator.share) {
+        navigator.share({ text: text }).then(
+          function () { markSent(); toast("Отправлено"); },
+          function (err) {
+            if (err && err.name === "AbortError") return;
+            copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+          }
+        );
+      } else {
+        copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+      }
+    });
+  })();
+
+  // Экспорт: самодостаточный HTML со стилями внутри. Открывается на любом
+  // телефоне, печатается, превращается в PDF — и живёт без нас.
+  function esc(s) {
+    return String(s || "").replace(/[&<>]/g, function (c) {
+      return c === "&" ? "&amp;" : c === "<" ? "&lt;" : "&gt;";
+    });
+  }
+
+  function exportHtml() {
+    var counts = countsBySection();
+    var dates = archive.map(function (e) { return localDate(e); }).sort(function (a, b) { return a - b; });
+    var from = dates.length ? dateLong(dates[0]) : "";
+    var to = dates.length ? dateLong(dates[dates.length - 1]) : "";
+
+    var p = [];
+    p.push('<!doctype html><html lang="ru"><head><meta charset="utf-8">');
+    p.push('<meta name="viewport" content="width=device-width, initial-scale=1">');
+    p.push("<title>Инструкция ко мне</title><style>");
+    p.push('body{font-family:Georgia,"Times New Roman",serif;color:#17202b;background:#fff;line-height:1.5;margin:0;padding:32px 20px 60px}');
+    p.push(".doc{max-width:720px;margin:0 auto}");
+    p.push("h1{font-size:30px;font-weight:400;margin:0 0 6px}");
+    p.push("h2{font-size:21px;font-weight:400;margin:34px 0 10px;padding-bottom:6px;border-bottom:1px solid #ccd2db}");
+    p.push("h3{font-size:15px;margin:20px 0 4px}");
+    p.push(".meta{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#7a838f;letter-spacing:.05em;text-transform:uppercase;margin-bottom:26px}");
+    p.push(".ans{font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;margin:0 0 4px;white-space:pre-wrap}");
+    p.push(".empty{color:#9aa3ae;font-style:italic}");
+    p.push("table{border-collapse:collapse;width:100%;font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;margin-top:8px}");
+    p.push("th,td{border:1px solid #ccd2db;padding:7px 9px;text-align:left;vertical-align:top}");
+    p.push("th{background:#eef1f5;font-size:13px}");
+    p.push(".sec-note{font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:13px;color:#7a838f;margin:2px 0 0}");
+    p.push(".foot{font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:13px;color:#7a838f;margin-top:44px;border-top:1px solid #ccd2db;padding-top:12px}");
+    p.push(".use{font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#3d4753;background:#f4f6f9;border-left:3px solid #6b8ab5;padding:14px 16px;margin:0 0 30px}");
+    p.push(".use p{margin:0 0 6px}.use p:last-child{margin:0}");
+    p.push("ul.when{margin:10px 0 0;padding-left:22px}ul.when li{margin-bottom:7px}");
+    p.push("a{color:#2f5aa8;text-decoration:none;border-bottom:1px solid #cbd6ea}");
+    p.push(".raw-note{font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;color:#7a838f;margin:0 0 6px}");
+    p.push(".blank{margin-top:10px}.blank div{border-bottom:1px solid #ccd2db;height:32px}");
+    p.push("@media print{body{padding:0}h2{page-break-after:avoid}table{page-break-inside:avoid}a{color:inherit;border:0}}");
+    p.push('</style></head><body><div class="doc">');
+
+    p.push("<h1>Инструкция ко мне</h1>");
+    p.push('<div class="meta">' + esc(from) + (to && to !== from ? " — " + esc(to) : "") +
+      " · записей: " + archive.length + "</div>");
+
+    // Первое, что человек видит, открыв файл через два месяца. Раньше эта
+    // мысль стояла в подвале мелким серым — то есть после всего.
+    p.push('<div class="use">');
+    p.push("<p>Это не отчёт и не дневник. Это факты о тебе — то, что с тобой правда было.</p>");
+    p.push("<p>Каждый день она не нужна. Она нужна в трудную минуту: когда плохо и непонятно почему, когда надо что-то решать, когда опять сорвалась и ругаешь себя.</p>");
+    p.push("<p>Когда тебе снова покажется, что ты ленивая, слабая, слишком чувствительная или что с тобой что-то не так, — здесь написано, как всё устроено на самом деле.</p>");
+    p.push("<p>В следующий раз, когда станет плохо, тебе не придётся гадать, что происходит. Ты уже знаешь, где искать ответ.</p>");
+    p.push("</div>");
+
+    p.push("<h2>Откроешь, когда</h2>");
+    p.push('<ul class="when">');
+    WHEN.forEach(function (w) { p.push("<li>" + esc(w) + "</li>"); });
+    p.push("</ul>");
+
+    // Повторения — это и есть инструкция: три строки, ради которых были
+    // четырнадцать дней. Поэтому идут первыми, а не третьими, как раньше.
+    p.push("<h2>Мои повторения</h2>");
+    var rows = finalData.povtor.filter(function (r) { return (r.always || "").trim(); });
+    if (rows.length) {
+      p.push("<table><tr><th>У меня всегда…</th><th>Откуда это видно</th><th>С кем чаще всего</th><th>Где мой вход</th></tr>");
+      rows.forEach(function (r) {
+        p.push("<tr><td>" + esc(r.always) + "</td><td>" + esc(r.from) + "</td><td>" + esc(r.who) +
+          "</td><td>" + (esc(r.input) || '<span style="color:#9aa3ae">—</span>') + "</td></tr>");
+      });
+      p.push('<p class="raw-note">Вход — место ближе к началу цепочки, где у тебя есть влияние. В конце, где уже накрыло, его нет.</p>');
+      p.push("</table>");
+    } else {
+      p.push('<p class="sec-note">Сюда ещё нечего написать: повторения собираются на сборке, в предпоследний день.</p>');
+    }
+
+    var people = nameRows();
+    if (people.length) {
+      p.push("<h2>Мои люди</h2>");
+      p.push('<p class="raw-note">Имена, которые встретились в записях не меньше трёх раз. Разные формы одного имени посчитаны вместе.</p>');
+      p.push("<table><tr><th>Кто</th><th style=\"width:14%\">Записей</th><th>Где чаще всего</th></tr>");
+      people.forEach(function (r) {
+        p.push("<tr><td>" + esc(r.name) + "</td><td>" + r.n + "</td><td>" + esc(r.where) + "</td></tr>");
+      });
+      p.push("</table>");
+    }
+
+    // Пустые ответы не печатаем: «не заполнено» в главном блоке читается
+    // как двойка за работу, а файл не экзамен.
+    var answered = FINAL_QS.filter(function (item) {
+      return (finalData.answers[item.id] || "").trim();
+    });
+    if (answered.length) {
+      p.push("<h2>Что я теперь знаю о себе</h2>");
+      answered.forEach(function (item) {
+        p.push("<h3>" + esc(item.q) + "</h3>");
+        p.push('<p class="ans">' + esc((finalData.answers[item.id] || "").trim()) + "</p>");
+      });
+    }
+
+    if ((env.then || "").trim()) {
+      p.push("<h2>Конверт</h2>");
+      p.push("<h3>" + esc(dateLong(new Date(env.ts))) + "</h3>");
+      p.push('<p class="ans">' + esc(env.then) + "</p>");
+      if ((env.now || "").trim()) {
+        p.push("<h3>Та же ситуация в последний день</h3>");
+        p.push('<p class="ans">' + esc(env.now) + "</p>");
+      }
+    }
+
+    var next = "";
+    try { next = (localStorage.getItem(KEY_Q) || "").trim(); } catch (e) {}
+    if (next) {
+      p.push("<h2>С чем я хочу разобраться глубже</h2>");
+      p.push('<p class="ans">' + esc(next) + "</p>");
+    }
+
+    // Записи — это сырьё, из которого сделано всё выше. Поэтому они уходят
+    // в конец: иначе выводы тонут в шестидесяти строчками таблиц.
+    p.push("<h2>Откуда это взялось</h2>");
+    p.push('<p class="raw-note">Все записи по разделам. Читать подряд не нужно. Это то, из чего собрано всё, что выше.</p>');
+    SECTIONS.forEach(function (sec) {
+      var mine = archive.filter(function (e) { return e.section === sec.id; });
+      if (sec.wide && !mine.length) return;
+      p.push('<h3 id="sec-' + esc(sec.id) + '">' + esc(sec.full || sec.name) +
+        " <span style=\"font-weight:400;color:#7a838f\">" + esc(sec.tag) + " · " + mine.length + "</span></h3>");
+      if (!mine.length) {
+        p.push('<p class="sec-note">Пусто за все четырнадцать дней. Это тоже ответ.</p>');
+        return;
+      }
+      p.push("<table><tr><th style=\"width:11%\">Дата</th><th>Что я заметила</th><th>После чего · с кем</th><th>Что я себе сказала или сделала</th></tr>");
+      mine.forEach(function (e) {
+        var d = localDate(e);
+        p.push("<tr><td>" + dateShort(d) + "<br><span style=\"color:#9aa3ae\">" + timeShort(d) + "</span></td>" +
+          "<td>" + esc(e.now) + "</td><td>" + esc(e.before) + "</td><td>" + esc(e.said) + "</td></tr>");
+      });
+      p.push("</table>");
+    });
+
+    p.push("<h2>Место дописать</h2>");
+    p.push('<p class="raw-note">Распечатай — и дописывай ручкой. Или вернись на страницу, запиши ещё и сохрани файл заново.</p>');
+    p.push('<div class="blank">' + new Array(9).join("<div></div>") + "</div>");
+
+    // Данные внутри файла: он одновременно и документ для чтения,
+    // и резервная копия, из которой страница восстанавливается целиком.
+    var backup = {
+      v: 1,
+      archive: archive,
+      env: env,
+      seen: seen,          // иначе после восстановления закрытые вехи вернутся
+      final: finalData,
+      next: (function () { try { return localStorage.getItem(KEY_Q) || ""; } catch (e) { return ""; } })(),
+      start: start
+    };
+    p.push('<script type="application/json" id="instrukciya-backup">' +
+      JSON.stringify(backup).replace(/</g, "\\u003c") + "<\/script>");
+
+    p.push('<p class="foot">Собрано в практикуме «Инструкция ко мне». ' +
+      "То, что верно про тебя сегодня, может не работать через полгода: человек меняется, и файл дописывается. " +
+      "Внутри этого файла лежит копия всех записей — из него страница восстанавливается целиком.</p>");
+    p.push("</div></body></html>");
+
+    return p.join("\n");
+  }
+
+  function doExport() {
+    if (!archive.length) { toast("Пока нечего сохранять"); return; }
+    var blob = new Blob([exportHtml()], { type: "text/html;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "Инструкция ко мне.html";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    toast("Файл сохранён");
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", doExport);
+  document.getElementById("exportBtn2").addEventListener("click", doExport);
+
+  // ---------- восстановление ----------
+
+  // Ключ записи — время и текст: одну и ту же запись из файла и из текста
+  // не задваиваем.
+  function entryKey(e) {
+    return dayKey(localDate(e)) + "|" + timeShort(localDate(e)) + "|" + (e.now || "").trim();
+  }
+
+  function mergeEntries(list) {
+    var have = {};
+    archive.forEach(function (e) { have[entryKey(e)] = true; });
+    var added = 0;
+    list.forEach(function (e) {
+      if (!e || !e.now || have[entryKey(e)]) return;
+      have[entryKey(e)] = true;
+      archive.push(e);
+      added++;
+    });
+    if (added) {
+      archive.sort(function (a, b) { return a.ts - b.ts; });
+      persist();
+      // Фразы восстановились вместе с остальным — второй раз их не просим,
+      // иначе они задвоятся в разделе.
+      if (archive.some(function (e) { return e.section === "frazy"; })) start.frazy = true;
+      if (!startReady()) start.restored = true;
+      saveStart();
+      render();
+      renderFrazy();
+    }
+    return added;
+  }
+
+  // Потерявший всё видит только стартовый экран — значит вход в восстановление
+  // должен быть там, а не на два тапа вглубь «Моих записей».
+  document.getElementById("lostBtn").addEventListener("click", function () {
+    var arch = document.getElementById("archiveBox");
+    var rest = document.querySelector("details.restore");
+    if (arch) arch.open = true;
+    if (rest) {
+      rest.open = true;
+      rest.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+
+  document.getElementById("restoreFile").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var m = String(reader.result).match(/id="instrukciya-backup"[^>]*>([\s\S]*?)<\/script>/);
+      if (!m) { toast("В этом файле нет копии записей"); return; }
+      var data;
+      try { data = JSON.parse(m[1].replace(/\\u003c/g, "<")); } catch (e) { data = null; }
+      if (!data || !data.archive) { toast("Файл не читается"); return; }
+
+      var added = mergeEntries(data.archive);
+
+      // Остальное восстанавливаем, только если своего ещё нет
+      if (data.env && !(env.then || "").trim()) { env = data.env; saveEnv(); renderEnvelope(); }
+      // Закрытые вехи возвращаем: иначе подарок третьего дня придёт второй раз
+      if (data.seen) { Object.keys(data.seen).forEach(function (k) { seen[k] = data.seen[k]; }); saveSeen(); }
+      if (data.final && finalEmpty()) { finalData = data.final; normalizeFinal(); saveFinal(); buildFinalForm(); }
+      if (data.start) { start.urok = start.urok || data.start.urok; start.alarm = start.alarm || data.start.alarm;
+                        start.frazy = start.frazy || data.start.frazy; saveStart(); }
+      if (data.next) { try { if (!localStorage.getItem(KEY_Q)) localStorage.setItem(KEY_Q, data.next); } catch (e) {} }
+
+      render();
+      toast(added ? "Восстановлено записей: " + added : "Всё это уже было на месте");
+    };
+    reader.readAsText(f);
+    this.value = "";
+  });
+
+  // Разбираем тот же текст, который страница сама отправляет себе.
+  var TAG_BY_NAME = {};
+  SECTIONS.forEach(function (s) { TAG_BY_NAME[s.tag] = s.id; });
+
+  // Границей записи служит строка с датой и тегом, а не пустая строка между
+  // записями. Раньше текст резался по пустым строкам — и при копировании из
+  // Telegram или заметок, где пустые строки между сообщениями не сохраняются,
+  // молча восстанавливалась только первая запись. Молча — хуже всего: человек
+  // видел «Восстановлено записей: 1» и считал, что остальных и не было.
+  var HEAD_RE = /^(\d{1,2})\.(\d{1,2})[,\s]+(\d{1,2}):(\d{2})\s*·\s*(#\S+)/;
+
+  function parseSent(text) {
+    var out = [];
+    var cur = null;
+
+    function flush() {
+      if (cur && cur.now) out.push(cur);
+      cur = null;
+    }
+
+    String(text).split("\n").forEach(function (raw) {
+      var l = raw.trim();
+      if (!l) return;
+
+      var head = l.match(HEAD_RE);
+      if (head) {
+        flush();
+        var sec = TAG_BY_NAME[head[5]];
+        if (!sec) return;              // чужой тег: запись пропускаем целиком
+
+        var now = new Date();
+        var d = new Date(now.getFullYear(), parseInt(head[2], 10) - 1, parseInt(head[1], 10),
+                         parseInt(head[3], 10), parseInt(head[4], 10), 0);
+        if (d - now > 86400000) d.setFullYear(d.getFullYear() - 1);   // дата из прошлого года
+
+        cur = { ts: d.getTime(), off: d.getTimezoneOffset(), section: sec, now: "", before: "", said: "" };
+        return;
+      }
+
+      if (!cur) return;                // текст до первой шапки — не наш
+      if (l.indexOf("После:") === 0) cur.before = l.slice(6).trim();
+      else if (l.indexOf("Сказала:") === 0) cur.said = l.slice(8).trim();
+      else if (!cur.now) cur.now = l;
+    });
+
+    flush();
+    return out;
+  }
+
+  document.getElementById("restoreTextBtn").addEventListener("click", function () {
+    var ta = document.getElementById("restoreText");
+    var found = parseSent(ta.value);
+    if (!found.length) {
+      toast("Не нашлось записей. Вставляй сообщения целиком, вместе со строчкой даты");
+      return;
+    }
+    var added = mergeEntries(found);
+    ta.value = "";
+    toast(added ? "Восстановлено записей: " + added : "Всё это уже было на месте");
+  });
+
+  // Заготовка нужна затем, что с чистого листа человек писать не станет,
+  // а по трём строчкам — станет. Но в чат с человеком Telegram текст из ссылки
+  // не подставляет, поэтому кладём заготовку в буфер и открываем чат следом.
+  document.getElementById("feedbackBtn").addEventListener("click", function () {
+    var draft = "Прошла практикум «Инструкция ко мне».\n\n" +
+      "С чем пришла:\n\n" +
+      "Что оказалось самым неожиданным:\n\n" +
+      "Что теперь знаю про себя:\n\n" +
+      "Показывать другим: можно / только для тебя\n";
+    var w = window.open("https://t.me/galina_psy", "_blank");
+    copyText(draft).then(
+      function () { toast(w ? "Заготовка скопирована — вставь в чат" : "Скопировано — открой чат и вставь"); },
+      function () { if (!w) toast("Напиши в Telegram: @galina_psy"); }
+    );
+  });
+
+  // Список всех уроков: вводный первым, дальше по разделам.
+  (function () {
+    var host = document.getElementById("lessons");
+    // Разделы — в «Описании разделов», аудио вех — отдельным блоком: карточки
+    // дней живут по суткам, и без списка запись пропала бы у тех, кто не зашёл.
+    var dayHost = document.getElementById("dayAudio");
+    // Каждое аудио появляется в свой день. Награда третьего дня заранее
+    // не показывается: обещанная награда снижает мотивацию, в этом весь смысл.
+    [[INTRO, 1], [BONUS, 3], [DAY_FACT, 5], [DAY_WEEK, 7], [DAY_SBOR, 13], [DAY_ITOG, 14]].forEach(function (pair) {
+      var d = document.createElement("details");
+      d.className = "lesson-item";
+      d.setAttribute("data-day", pair[1]);
+      var s2 = document.createElement("summary");
+      s2.textContent = pair[0].name;
+      d.appendChild(s2);
+      d.appendChild(lessonBlock(pair[0]));
+      dayHost.appendChild(d);
+    });
+    SECTIONS.forEach(function (sec) {
+      var d = document.createElement("details");
+      d.className = "lesson-item";
+      var s = document.createElement("summary");
+      s.textContent = sec.name;
+      d.appendChild(s);
+      d.appendChild(lessonBlock(sec));
+      host.appendChild(d);
+    });
+  })();
+
+  if (BUY_URL) {
+    document.getElementById("buyLink").href = BUY_URL;
+    document.getElementById("buyLine").hidden = false;
+  }
+
+  if (SUPPORT_URL) {
+    document.getElementById("supportLink").href = SUPPORT_URL;
+    document.getElementById("supportLine").hidden = false;
+  }
+
+  load();
+  loadFinal();
+  buildFinalForm();
+  renderEnvelope();
+  renderFrazy();
+  stamp();
+  setInterval(stamp, 30000);
+  slots = [newSlot(true)];
+  render();
+
+  // Вернулась спустя долгое время — это уже следующий сигнал.
+  var leftAt = 0;
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      leftAt = Date.now();
+      return;
+    }
+    if (leftAt && Date.now() - leftAt > 20 * 60 * 1000) {
+      if (!slots.some(function (s) { return s.done || s.now; })) slots = [newSlot(true)];
+      render();
+    }
+    stamp();
+  });
+
+  document.getElementById("addBtn").addEventListener("click", function () {
+    if (slots.length >= MAX_SLOTS) return;
+    slots.forEach(function (s) { s.open = false; });
+    slots.push(newSlot(true));
+    render();
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  });
+
+})();
+</script>
+</body>
+</html>
