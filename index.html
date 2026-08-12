@@ -1034,17 +1034,28 @@
     return lines.join("\n");
   }
 
-  function sessionText() {
-    var ready = slots.filter(function (s) { return s.done; });
-    return ready.map(entryText).join("\n\n");
+  // Что уходит по кнопкам внизу — одно правило: всё, что себе ещё
+  // не отправляла. Раньше правил было два (есть незакрытая запись — уходит
+  // она, нет — уходит весь архив), и какое сработает, человек до нажатия
+  // не знал. Заодно закрылась дыра: запись, сделанная вчера и не отправленная,
+  // не уходила уже никогда — сессия пустеет к следующему заходу.
+  // Запись ложится в архив по «Готово», поэтому сегодняшняя тоже здесь.
+  function unsentEntries() {
+    return archive.filter(function (e) { return (e.ts || 0) > lastSent; });
   }
 
-  // То, что уходит по кнопкам внизу. Записанное сейчас — а если сейчас
-  // ничего не записано, всё, что есть. Формат один и тот же: строка даты
-  // с тегом сверху. Из такого текста страница восстанавливается обратно,
-  // из сборки — нет, поэтому копией себе служит именно он.
+  // Когда неотправленного нет, кнопки не гаснут: уходит копия всего.
+  // Что именно уйдёт, видно заранее — под кнопками стоит число.
+  function outgoingEntries() {
+    var fresh = unsentEntries();
+    return fresh.length ? fresh : archive.slice();
+  }
+
+  // Формат тот же, что у одной записи: строка даты с тегом сверху.
+  // Из такого текста страница восстанавливается обратно, из сборки — нет,
+  // поэтому копией себе служит именно он.
   function outgoingText() {
-    return sessionText() || (archive.length ? archive.map(entryText).join("\n\n") : "");
+    return outgoingEntries().map(entryText).join("\n\n");
   }
 
   // ---------- отрисовка слотов ----------
@@ -1073,19 +1084,18 @@
     var canAdd = slots.length < MAX_SLOTS && last && last.done;
     document.getElementById("addmore").hidden = !canAdd;
 
-    var readyCount = slots.filter(function (s) { return s.done; }).length;
-    // Кнопки гасли, как только сессия пустела, — а пустая она почти всегда:
-    // после отправки слоты сбрасываются, и вернувшаяся за копией человек
-    // видела три мёртвые кнопки и совет «сначала запиши хотя бы одно», хотя
-    // записей у неё полсотни. Пустая сессия теперь значит не «нечего
-    // отправлять», а «отправится всё, что записано».
-    var canSend = readyCount > 0 || archive.length > 0;
+    // Кнопки закрыты только там, где записей нет вообще. Подсказка под ними
+    // говорит числом, а не объяснением: что уйдёт, человек должен знать
+    // до нажатия, и короткая строчка с числом читается быстрее двух фраз.
     ["sendTg", "sendShare", "sendCopy"].forEach(function (id) {
-      document.getElementById(id).disabled = !canSend;
+      document.getElementById(id).disabled = archive.length === 0;
     });
-    document.getElementById("saveHint").textContent = readyCount === 0
-      ? (archive.length ? "Новых записей нет — уйдёт всё, что записано" : "Сначала запиши хотя бы одно")
-      : (readyCount === 1 ? "Готова одна запись" : "Готово записей: " + readyCount);
+    var fresh = unsentEntries().length;
+    document.getElementById("saveHint").textContent =
+      !archive.length ? "Сначала запиши хотя бы одно"
+      : fresh ? (fresh === 1 ? "Уйдёт одна запись" : "Уйдёт записей: " + fresh)
+      : (archive.length === 1 ? "Новых нет — уйдёт та же запись"
+                              : "Новых нет — уйдёт копия всего: " + archive.length);
 
     renderIntro();
     renderDayAudio();
