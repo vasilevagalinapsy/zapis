@@ -316,6 +316,16 @@
     color: var(--clay); font-weight: 600; font-size: 13px;
     background: var(--clay-soft); border-radius: var(--r-sm); padding: 7px 10px;
   }
+  /* Буфер обмена и системное «Поделиться» отказывают молча: в старом браузере,
+     во встроенном окне приложения, на странице без https. Кнопка при этом
+     выглядит нажатой, а не происходит ничего. Тогда текст показывается прямо
+     здесь — выделить и скопировать руками можно всегда. */
+  .manual {
+    display: flex; flex-direction: column; gap: 8px;
+    background: var(--card); border: 1px solid var(--rule);
+    border-radius: var(--r-sm); padding: 12px; text-align: left;
+  }
+  .manual textarea { background: var(--ground); border-color: var(--rule); font-size: 14px; }
 
   details.restore { border-top: 1px solid var(--rule-soft); margin-top: 4px; }
   details.restore > summary {
@@ -468,6 +478,8 @@
     <p class="card-note">В последний день ты опишешь ту же ситуацию заново, не заглядывая сюда. Разница между двумя описаниями и покажет, что изменилось. Подделать её нельзя.</p>
     <div id="envBox"></div>
 
+    <p class="warn" id="pwaNote" hidden>Открыла со значка на экране «Домой», а записей нет? Значок держит записи отдельно от браузера: те, что ты вносила в браузере, остались там, целые. Открой инструкцию по своей ссылке в браузере, нажми внизу «Сохранить инструкцию файлом», вернись сюда и загрузи этот файл: <button type="button" class="linklike" id="pwaRestoreBtn">Восстановить их</button>. Дальше записывай в одном месте — там, где значок.</p>
+
     <p class="card-note lost">Уже начинала, а записи пропали? <button type="button" class="linklike" id="lostBtn">Восстановить их</button></p>
 
     <div id="startNext" class="next-note">
@@ -579,6 +591,7 @@
     </div>
     <div class="save-hint" id="saveHint">Сначала запиши хотя бы одно</div>
     <div class="save-hint" id="copyState"></div>
+    <div class="manual" id="manualBox" hidden></div>
   </div>
 
   <section class="card milestone" id="final" hidden>
@@ -925,6 +938,18 @@
     ta.style.height = Math.max(48, ta.scrollHeight) + "px";
   }
 
+  // Значок на экране «Домой» — это отдельное окно с отдельным хранилищем.
+  // Записи, сделанные в браузере, в него не переезжают: для системы это
+  // два разных места. Знать об этом нужно в двух местах — на стартовом
+  // экране (объяснить пустоту) и при отправке в Telegram (внутри значка
+  // ссылка t.me открывается встроенным окном, а не приложением).
+  function isStandalone() {
+    if (navigator.standalone) return true;
+    try {
+      return !!(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    } catch (e) { return false; }
+  }
+
   // ---------- текст записи ----------
 
   function entryText(e) {
@@ -940,6 +965,14 @@
   function sessionText() {
     var ready = slots.filter(function (s) { return s.done; });
     return ready.map(entryText).join("\n\n");
+  }
+
+  // То, что уходит по кнопкам внизу. Записанное сейчас — а если сейчас
+  // ничего не записано, всё, что есть. Формат один и тот же: строка даты
+  // с тегом сверху. Из такого текста страница восстанавливается обратно,
+  // из сборки — нет, поэтому копией себе служит именно он.
+  function outgoingText() {
+    return sessionText() || (archive.length ? archive.map(entryText).join("\n\n") : "");
   }
 
   // ---------- отрисовка слотов ----------
@@ -969,11 +1002,17 @@
     document.getElementById("addmore").hidden = !canAdd;
 
     var readyCount = slots.filter(function (s) { return s.done; }).length;
+    // Кнопки гасли, как только сессия пустела, — а пустая она почти всегда:
+    // после отправки слоты сбрасываются, и вернувшаяся за копией человек
+    // видела три мёртвые кнопки и совет «сначала запиши хотя бы одно», хотя
+    // записей у неё полсотни. Пустая сессия теперь значит не «нечего
+    // отправлять», а «отправится всё, что записано».
+    var canSend = readyCount > 0 || archive.length > 0;
     ["sendTg", "sendShare", "sendCopy"].forEach(function (id) {
-      document.getElementById(id).disabled = readyCount === 0;
+      document.getElementById(id).disabled = !canSend;
     });
     document.getElementById("saveHint").textContent = readyCount === 0
-      ? "Сначала запиши хотя бы одно"
+      ? (archive.length ? "Новых записей нет — уйдёт всё, что записано" : "Сначала запиши хотя бы одно")
       : (readyCount === 1 ? "Готова одна запись" : "Готово записей: " + readyCount);
 
     renderIntro();
@@ -1101,6 +1140,10 @@
     var day = dayOfPractice();
 
     document.getElementById("intro").hidden = ready;
+    // Пустой архив внутри значка почти всегда означает не потерю, а второе
+    // хранилище: записи лежат в браузере. Объясняем это там, где человек
+    // в этом состоянии находится, — другого экрана он не видит.
+    document.getElementById("pwaNote").hidden = !isStandalone() || archive.length > 0;
     document.getElementById("startDone").hidden = !ready;
     document.getElementById("startNext").hidden = ready;
     renderMilestones(ready, day);
@@ -1686,9 +1729,47 @@
     commit();
     markSent();
     toast(msg);
+    hideManualText();
     slots = [newSlot(true)];
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function hideManualText() {
+    var box = document.getElementById("manualBox");
+    box.hidden = true;
+    box.innerHTML = "";
+  }
+
+  // Кнопка, после которой не произошло ничего, читается как сломанная —
+  // а буфер обмена и системное «Поделиться» отказывают именно молча.
+  // Поэтому у отказа есть видимый исход: текст выкладывается на страницу
+  // целиком и выделенным. Выделить и скопировать руками можно везде.
+  function showManualText(text, note) {
+    var box = document.getElementById("manualBox");
+    box.innerHTML = "";
+    box.hidden = false;
+
+    var p = document.createElement("p");
+    p.className = "card-note";
+    p.textContent = note || "Выдели текст и скопируй руками.";
+    box.appendChild(p);
+
+    var ta = document.createElement("textarea");
+    ta.rows = 8;
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    box.appendChild(ta);
+
+    var hide = document.createElement("button");
+    hide.type = "button";
+    hide.className = "linklike";
+    hide.textContent = "Убрать";
+    hide.addEventListener("click", hideManualText);
+    box.appendChild(hide);
+
+    try { ta.focus(); ta.select(); ta.setSelectionRange(0, text.length); } catch (e) {}
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   function legacyCopy(text) {
@@ -1722,29 +1803,70 @@
   function copyOrFail(text, msg) {
     copyText(text).then(
       function () { afterSend(msg || "Скопировано"); },
-      function () { toast("Не вышло скопировать — выдели текст руками"); }
+      function () { showManualText(text, "Скопировать не вышло — браузер не дал. Выдели текст и скопируй руками."); }
     );
   }
 
-  document.getElementById("sendTg").addEventListener("click", function () {
-    var text = sessionText();
-    if (!text) return;
-    var url = "https://t.me/share/url?url=&text=" + encodeURIComponent(text);
-    var w = window.open(url, "_blank");
-    if (w) {
-      commit();
-      markSent();
-      slots = [newSlot(true)];
-      render();
-      toast("Открываю Telegram");
-    } else {
-      // всплывающее окно заблокировано или мы во фрейме
-      copyOrFail(text, "Скопировано — вставь в свой канал");
+  // Длиннее в ссылку не влезает: Telegram обрежет текст или откажется открываться.
+  var TG_MAX = 3500;
+
+  // Адрес t.me — это страница. Открытая через window.open, внутри значка
+  // с экрана «Домой» она уходит во встроенное окно браузера, и человек видит
+  // сайт Telegram вместо чата. Схема tg:// отдаёт всё сразу приложению.
+  // Если Telegram не стоит, не откроется ничего — поэтому следом, паузой,
+  // пробуем обычный адрес. Что приложение открылось, видно по тому, что
+  // страница ушла в фон.
+  function toTelegram(scheme, url, onFail) {
+    var left = false;
+    function away() { left = true; }
+    if (document.addEventListener) document.addEventListener("visibilitychange", away);
+    if (window.addEventListener) window.addEventListener("pagehide", away);
+
+    var jumped = false;
+    try {
+      if (window.location) { window.location.href = scheme; jumped = true; }
+    } catch (e) { jumped = false; }
+
+    setTimeout(function () {
+      if (document.removeEventListener) document.removeEventListener("visibilitychange", away);
+      if (window.removeEventListener) window.removeEventListener("pagehide", away);
+      if (left || document.hidden) return;
+      var w = window.open(url, "_blank");
+      if (!w && !jumped && onFail) onFail();
+    }, 1200);
+  }
+
+  function openTelegramChat(name) {
+    toTelegram("tg://resolve?domain=" + name, "https://t.me/" + name);
+  }
+
+  function openTelegram(text) {
+    var long = text.length > TG_MAX;
+    var enc = encodeURIComponent(long ? "" : text);
+
+    // Длинную копию ссылка не унесёт. Тогда кладём её в буфер, а приложение
+    // открываем пустым: человеку остаётся выбрать «Избранное» и вставить.
+    if (long) {
+      copyText(text).then(
+        function () { toast("Записей много — текст скопирован, вставь его в чат"); },
+        function () { showManualText(text, "Записей много: в ссылку столько не влезает. Выдели текст, скопируй и вставь себе в чат."); }
+      );
     }
+
+    toTelegram("tg://msg?text=" + enc, "https://t.me/share/url?url=&text=" + enc, function () {
+      showManualText(text, "Telegram не открылся. Выдели текст и отправь себе, как удобно.");
+    });
+  }
+
+  document.getElementById("sendTg").addEventListener("click", function () {
+    var text = outgoingText();
+    if (!text) return;
+    afterSend("Открываю Telegram");
+    openTelegram(text);
   });
 
   document.getElementById("sendShare").addEventListener("click", function () {
-    var text = sessionText();
+    var text = outgoingText();
     if (!text) return;
     if (navigator.share) {
       navigator.share({ text: text }).then(
@@ -1760,7 +1882,7 @@
   });
 
   document.getElementById("sendCopy").addEventListener("click", function () {
-    var text = sessionText();
+    var text = outgoingText();
     if (!text) return;
     copyOrFail(text);
   });
@@ -2041,11 +2163,11 @@
         function () { toast("Отправлено"); },
         function (err) {
           if (err && err.name === "AbortError") return;
-          copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+          copyText(text).then(function () { toast("Скопировано"); }, function () { showManualText(text); });
         }
       );
     } else {
-      copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+      copyText(text).then(function () { toast("Скопировано"); }, function () { showManualText(text); });
     }
   }
 
@@ -2305,11 +2427,11 @@
           function () { markSent(); toast("Отправлено"); },
           function (err) {
             if (err && err.name === "AbortError") return;
-            copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+            copyText(text).then(function () { toast("Скопировано"); }, function () { showManualText(text); });
           }
         );
       } else {
-        copyText(text).then(function () { toast("Скопировано"); }, function () { toast("Не вышло скопировать"); });
+        copyText(text).then(function () { toast("Скопировано"); }, function () { showManualText(text); });
       }
     });
   })();
@@ -2528,7 +2650,7 @@
 
   // Потерявший всё видит только стартовый экран — значит вход в восстановление
   // должен быть там, а не на два тапа вглубь «Моих записей».
-  document.getElementById("lostBtn").addEventListener("click", function () {
+  function openRestore() {
     var arch = document.getElementById("archiveBox");
     var rest = document.querySelector("details.restore");
     if (arch) arch.open = true;
@@ -2536,7 +2658,10 @@
       rest.open = true;
       rest.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  });
+  }
+
+  document.getElementById("lostBtn").addEventListener("click", openRestore);
+  document.getElementById("pwaRestoreBtn").addEventListener("click", openRestore);
 
   document.getElementById("restoreFile").addEventListener("change", function () {
     var f = this.files && this.files[0];
@@ -2637,10 +2762,10 @@
       "Что оказалось самым неожиданным:\n\n" +
       "Что теперь знаю про себя:\n\n" +
       "Показывать другим: можно / только для тебя\n";
-    var w = window.open("https://t.me/galina_psy", "_blank");
+    openTelegramChat("galina_psy");
     copyText(draft).then(
-      function () { toast(w ? "Заготовка скопирована — вставь в чат" : "Скопировано — открой чат и вставь"); },
-      function () { if (!w) toast("Напиши в Telegram: @galina_psy"); }
+      function () { toast("Заготовка скопирована — вставь в чат"); },
+      function () { showManualText(draft, "Вот заготовка. Выдели, скопируй и вставь в чат @galina_psy."); }
     );
   });
 
