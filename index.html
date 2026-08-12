@@ -90,6 +90,13 @@
     text-transform: uppercase; color: var(--muted); font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
+  .reload {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--accent); white-space: nowrap;
+    background: none; border: 1px solid var(--rule); border-radius: 999px;
+    padding: 4px 10px; cursor: pointer;
+  }
+  .reload:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .top p { color: var(--ink-2); font-size: 15.5px; }
 
   /* Вопрос — самый крупный текст экрана: он про то, что делать сейчас */
@@ -447,6 +454,10 @@
   <header class="top">
     <div class="brand">Инструкция ко мне</div>
     <div class="stamp" id="stamp">—</div>
+    <!-- Внутри значка с экрана «Домой» нет ни адресной строки, ни движения
+         вниз для обновления: страницу нечем перезагрузить. Поэтому кнопка
+         своя, и стоит она наверху, где её ищут. -->
+    <button type="button" class="reload" id="reloadBtn" hidden aria-label="Обновить страницу">Обновить</button>
   </header>
 
   <section class="card milestone" id="intro" hidden>
@@ -477,8 +488,6 @@
     <p>Опиши одну ситуацию последних дней — как умеешь, своими словами. Не старайся написать правильно.</p>
     <p class="card-note">В последний день ты опишешь ту же ситуацию заново, не заглядывая сюда. Разница между двумя описаниями и покажет, что изменилось. Подделать её нельзя.</p>
     <div id="envBox"></div>
-
-    <p class="warn" id="pwaNote" hidden>Открыла со значка на экране «Домой», а записей нет? Значок держит записи отдельно от браузера: те, что ты вносила в браузере, остались там, целые. Открой инструкцию по своей ссылке в браузере, нажми внизу «Сохранить инструкцию файлом», вернись сюда и загрузи этот файл: <button type="button" class="linklike" id="pwaRestoreBtn">Восстановить их</button>. Дальше записывай в одном месте — там, где значок.</p>
 
     <p class="card-note lost">Уже начинала, а записи пропали? <button type="button" class="linklike" id="lostBtn">Восстановить их</button></p>
 
@@ -550,6 +559,12 @@
     <div id="povtorBox"></div>
     <p class="card-note" id="namesHint" hidden></p>
   </section>
+
+  <!-- Стоит между карточкой подготовки и экраном записи нарочно: попавшая
+       в значок человек либо не прошла подготовку (видит стартовый экран),
+       либо прошла её заново (видит экран записи). Строчка нужна в обоих
+       состояниях, поэтому живёт снаружи обеих. -->
+  <p class="warn" id="pwaNote" hidden>Открыла со значка на экране «Домой», а записей нет? Значок держит записи отдельно от браузера: те, что ты вносила в браузере, остались там, целые. Перенести их так: открой инструкцию по своей ссылке в браузере, нажми внизу «Сохранить инструкцию файлом», вернись сюда и загрузи этот файл — <button type="button" class="linklike" id="pwaRestoreBtn">Восстановить их</button>. Подготовку заново проходить не надо: записи сложатся вместе, дежурные фразы не задвоятся, а конверт останется тот, что запечатан раньше.</p>
 
   <h1 id="ask" class="ask-title">Что с тобой сейчас и что было до этого?</h1>
   <p class="card-note ask-note" id="askNote" hidden></p>
@@ -950,6 +965,17 @@
     } catch (e) { return false; }
   }
 
+  // В браузере обновление есть своё, и вторая кнопка там только мешает.
+  (function () {
+    var btn = document.getElementById("reloadBtn");
+    btn.hidden = !isStandalone();
+    btn.addEventListener("click", function () {
+      try {
+        if (window.location && window.location.reload) window.location.reload();
+      } catch (e) { toast("Обновить не вышло — закрой и открой значок"); }
+    });
+  })();
+
   // ---------- текст записи ----------
 
   function entryText(e) {
@@ -1140,10 +1166,12 @@
     var day = dayOfPractice();
 
     document.getElementById("intro").hidden = ready;
-    // Пустой архив внутри значка почти всегда означает не потерю, а второе
-    // хранилище: записи лежат в браузере. Объясняем это там, где человек
-    // в этом состоянии находится, — другого экрана он не видит.
-    document.getElementById("pwaNote").hidden = !isStandalone() || archive.length > 0;
+    // Пустота внутри значка почти всегда означает не потерю, а второе
+    // хранилище: записи лежат в браузере. Считаем пустотой и то состояние,
+    // где есть одна подготовка: человек, попавший в значок, первым делом
+    // проходит её заново — и строчка исчезала бы ровно тогда, когда нужна.
+    var onlyPrep = archive.every(function (e) { return e.prep; });
+    document.getElementById("pwaNote").hidden = !isStandalone() || !onlyPrep;
     document.getElementById("startDone").hidden = !ready;
     document.getElementById("startNext").hidden = ready;
     renderMilestones(ready, day);
@@ -2620,20 +2648,37 @@
 
   // Ключ записи — время и текст: одну и ту же запись из файла и из текста
   // не задваиваем.
+  // Дежурные фразы — исключение: это не наблюдение в минуту, а подготовка.
+  // Попавшая в новое место человек проходит подготовку заново и выписывает
+  // те же две-три фразы — по времени они разойдутся, а это одни и те же
+  // фразы. Поэтому у них ключом служит сам текст.
   function entryKey(e) {
+    if (e.section === "frazy") return "frazy|" + (e.now || "").trim().toLowerCase();
     return dayKey(localDate(e)) + "|" + timeShort(localDate(e)) + "|" + (e.now || "").trim();
   }
 
   function mergeEntries(list) {
     var have = {};
-    archive.forEach(function (e) { have[entryKey(e)] = true; });
-    var added = 0;
+    archive.forEach(function (e) { have[entryKey(e)] = e; });
+    var added = 0, moved = 0;
     list.forEach(function (e) {
-      if (!e || !e.now || have[entryKey(e)]) return;
-      have[entryKey(e)] = true;
+      if (!e || !e.now) return;
+      var was = have[entryKey(e)];
+      if (was) {
+        // Та же запись, но из более раннего места: возвращаем ей настоящее
+        // время. Иначе первый день практикума переехал бы на сегодня.
+        if (e.ts && was.ts && e.ts < was.ts) { was.ts = e.ts; was.off = e.off; moved++; }
+        return;
+      }
+      have[entryKey(e)] = e;
       archive.push(e);
       added++;
     });
+    if (moved && !added) {
+      archive.sort(function (a, b) { return a.ts - b.ts; });
+      persist();
+      render();
+    }
     if (added) {
       archive.sort(function (a, b) { return a.ts - b.ts; });
       persist();
@@ -2676,8 +2721,16 @@
 
       var added = mergeEntries(data.archive);
 
-      // Остальное восстанавливаем, только если своего ещё нет
-      if (data.env && !(env.then || "").trim()) { env = data.env; saveEnv(); renderEnvelope(); }
+      // Остальное восстанавливаем, только если своего ещё нет.
+      // Конверт — по-другому: своим считается запечатанный раньше. Человек,
+      // начавший заново в новом месте, запечатывает второй конверт сегодня,
+      // и он затирал бы настоящий, двухнедельной давности. А весь смысл
+      // конверта в расстоянии между двумя описаниями.
+      if (data.env && (data.env.then || "").trim()) {
+        var mine = (env.then || "").trim();
+        var older = data.env.ts && (!env.ts || data.env.ts < env.ts);
+        if (!mine || older) { env = data.env; saveEnv(); renderEnvelope(); }
+      }
       // Закрытые вехи возвращаем: иначе подарок третьего дня придёт второй раз
       if (data.seen) { Object.keys(data.seen).forEach(function (k) { seen[k] = data.seen[k]; }); saveSeen(); }
       if (data.final && finalEmpty()) { finalData = data.final; normalizeFinal(); saveFinal(); buildFinalForm(); }
