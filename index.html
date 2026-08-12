@@ -316,6 +316,10 @@
     padding: 16px 0 8px; margin-top: -2px;
     display: flex; flex-direction: column; gap: 8px;
   }
+  /* Пока человек пишет, панель уходит целиком. Вместе с клавиатурой она
+     съедала половину того, что остаётся на экране, — а отправлять в эту
+     минуту нечего: запись ещё не дописана. */
+  .save.typing { display: none; }
   .save .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .save .row .btn { min-height: 46px; font-size: 15px; }
   .save-hint { font-size: 12.5px; color: var(--muted); text-align: center; }
@@ -597,8 +601,15 @@
     <b>Первое аудио ты ещё не слушала.</b> Оно внизу, в «Аудио по дням». Записывать можно и без него, но там объяснено, зачем всё устроено именно так. <button type="button" class="linklike" id="urokNoteDone">Послушала</button>
   </div>
 
+  <!-- Эта строчка стояла внутри закреплённой панели и висела на экране всегда,
+       занимая три строки из тех немногих, что остаются над клавиатурой.
+       Прочитать её достаточно один раз, и место ей здесь, рядом с двумя
+       другими постоянными строчками. -->
+  <div class="rule-note" id="localNote">
+    <b>Записи живут только в этом телефоне.</b> Отправь их себе — будет копия, из которой всё вернётся, если телефон потеряется или ты почистишь браузер.
+  </div>
+
   <div class="save" id="saveBar">
-    <div class="save-hint">Записи живут только в этом телефоне. Отправь их себе — будет копия, из которой всё вернётся, если телефон потеряется или ты почистишь браузер.</div>
     <button class="btn" id="sendTg" disabled>Отправить себе в Telegram</button>
     <div class="row">
       <button class="btn ghost" id="sendShare" disabled>MAX, Заметки…</button>
@@ -965,6 +976,41 @@
     } catch (e) { return false; }
   }
 
+  // Панель отправки закреплена внизу — и вместе с клавиатурой съедает
+  // половину экрана ровно тогда, когда человек пишет. Отправлять в эту
+  // минуту нечего: запись ещё не дописана. Поэтому на время письма панель
+  // уходит и возвращается, как только курсор вышел из поля.
+  (function () {
+    var bar = document.getElementById("saveBar");
+    var timer = 0;
+
+    function field(t) {
+      return !!t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT");
+    }
+
+    // Поля внутри самой панели не в счёт: там лежит текст, выложенный
+    // на случай отказа буфера, и прятать его от выделяющей руки нельзя.
+    function insideBar(t) {
+      for (var n = t; n; n = n.parentNode) if (n === bar) return true;
+      return false;
+    }
+
+    document.addEventListener("focusin", function (e) {
+      var t = e && e.target;
+      if (!field(t) || insideBar(t)) return;
+      clearTimeout(timer);
+      bar.classList.add("typing");
+    });
+
+    document.addEventListener("focusout", function (e) {
+      var t = e && e.target;
+      if (!field(t) || insideBar(t)) return;
+      // Пауза, чтобы панель не мигала при переходе из поля в поле.
+      clearTimeout(timer);
+      timer = setTimeout(function () { bar.classList.remove("typing"); }, 250);
+    });
+  })();
+
   // В браузере обновление есть своё, и вторая кнопка там только мешает.
   (function () {
     var btn = document.getElementById("reloadBtn");
@@ -1183,6 +1229,7 @@
     document.getElementById("saveBar").hidden = !ready;
     document.getElementById("askNote").hidden = !ready;
     document.getElementById("ruleNote").hidden = !ready;
+    document.getElementById("localNote").hidden = !ready;
     // Нажавшая «послушаю позже» проходит дальше, и напомнить об этом больше
     // негде: карточка подготовки исчезает навсегда. Строчка висит на экране
     // записи, пока человек сам не отметит, что послушала.
