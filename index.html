@@ -865,7 +865,7 @@
   // его не вносим — файлы вечные, а поддержка кончится вместе с ценой 990.
   // Пустая строка — строчка не показывается. Когда цена станет 1290, вернуть
   // сюда пустую строку: это одна правка вместо перезаписи шестнадцати файлов.
-  var SUPPORT_URL = "";
+  var SUPPORT_URL = "https://t.me/galina_psy";
 
   var KEY = "instrukciya_zapisi_v1";
   var KEY_SENT = "instrukciya_otpravleno_v1";
@@ -2989,9 +2989,56 @@
     document.getElementById("buyLine").hidden = false;
   }
 
+  // Служебная приписка к письму о поломке. Человек напишет «у меня всё
+  // пропало» — без этих строчек разбирать нечего: непонятно, записи исчезли
+  // или он просто открыл браузер вместо значка.
+  //
+  // Только числа. Ни одной записи и ни одного слова из них: «я твоих записей
+  // не вижу» — техническая правда, и она не ломается ради удобства разбора.
+  function diagLines() {
+    var days = 0;
+    try { days = dayOfPractice(); } catch (e) {}
+    var sent = lastSent
+      ? Math.round((Date.now() - lastSent) / 86400000) + " дн. назад"
+      : "ни разу";
+    var device = "";
+    try { device = String(navigator.userAgent || "").slice(0, 120); } catch (e) {}
+    return [
+      "— — — служебное, не удаляй — — —",
+      "записей: " + archive.length + " · дней: " + days,
+      "открыто: " + (isStandalone() ? "со значка" : "в браузере"),
+      "отправляла себе: " + sent,
+      "конверт: " + ((env.then || "").trim() ? "запечатан" : "пустой"),
+      "версия данных: " + readVersion(),
+      "устройство: " + device
+    ].join("\n");
+  }
+
+  function supportDraft() {
+    return "Пишу со страницы записи.\n\n" +
+      "Что я делала:\n\n" +
+      "Что не получилось или что непонятно:\n\n" +
+      diagLines() + "\n";
+  }
+
   if (SUPPORT_URL) {
-    document.getElementById("supportLink").href = SUPPORT_URL;
+    var supportLink = document.getElementById("supportLink");
+    supportLink.href = SUPPORT_URL;
     document.getElementById("supportLine").hidden = false;
+
+    // Как и с отзывом: текст в чат из ссылки Telegram не подставляет, поэтому
+    // кладём заготовку в буфер и открываем чат следом.
+    supportLink.addEventListener("click", function (ev) {
+      var name = (String(SUPPORT_URL).match(/t\.me\/([A-Za-z0-9_]+)/) || [])[1];
+      if (!name) return;                       // не Telegram — открываем ссылкой
+      if (ev && ev.preventDefault) ev.preventDefault();
+      var draft = supportDraft();
+      openTelegramChat(name);
+      copyText(draft).then(
+        function () { toast("Скопировала — вставь в чат"); },
+        function () { showManualText(draft, "Скопируй это и вставь в чат @" + name + "."); }
+      );
+    });
   }
 
   load();
