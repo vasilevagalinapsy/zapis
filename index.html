@@ -712,7 +712,7 @@
 
   <footer class="foot">
     <p>Записи хранятся <b>только в этом телефоне</b>. Никуда не отправляются, пока ты сама не нажмёшь.</p>
-    <p>Метод опирается на научные исследования: experience sampling, emotional granularity, affect labeling, expressive writing.</p>
+    <p>Метод опирается на научные исследования: experience sampling, emotional granularity, affect labeling, expressive writing, Five Areas.</p>
     <p><button type="button" class="linklike" id="icsBtn2">Поставить напоминания 10:00 · 15:00 · 20:00</button></p>
     <p id="supportLine" hidden>Не получается или что-то непонятно — <a id="supportLink" href="#" target="_blank" rel="noopener">напиши мне</a>. Про то, как записывать: что твои записи значат, называешь ты сама.</p>
     <p id="buyLine" hidden>Если тебе переслали эту ссылку — практикум можно <a id="buyLink" href="#" target="_blank" rel="noopener">купить здесь</a>.</p>
@@ -786,6 +786,16 @@
       lesson: "Записи, которым не нашлось места, часто самые честные."
     }
   ];
+
+  // Куда девается запись, чей раздел упразднён, переименован или не распознан.
+  // «Пока не знаю» для этого и заведён: там место всему, чему места нет.
+  // Правило из решения 0015 — упразднённое скрывается, а не удаляется, и ни
+  // одна правка кода не должна стоить человеку записи.
+  var FALLBACK_SECTION = "neyasno";
+  function fallbackTag() {
+    var s = sectionById(FALLBACK_SECTION);
+    return s ? s.tag : "#разобрать";
+  }
 
   var INTRO = {
     id: "vse", name: "С чего начать",
@@ -864,7 +874,65 @@
   var KEY_START = "instrukciya_start_v1";
   var KEY_ENV = "instrukciya_konvert_v1";
   var KEY_SEEN = "instrukciya_vehi_v1";
+  var KEY_VER = "instrukciya_versiya";
   var MAX_SLOTS = 6;   // норма дня — три, но не запрещаем больше
+
+  // ---------- версия данных и миграции (решение 0015) ----------
+  //
+  // Записи лежат в памяти телефона, сервера нет, копии у автора нет. Любая
+  // правка кода уходит сразу всем, откатить выборочно нельзя, а узнать о
+  // поломке неоткуда: аналитики нет, и человек с пустым экраном просто уйдёт.
+  // Отсюда весь порядок ниже.
+
+  var DATA_VERSION = 1;
+  var STORE_KEYS = [KEY, KEY_SENT, KEY_Q, KEY_FINAL, KEY_START, KEY_ENV, KEY_SEEN];
+
+  function readVersion() {
+    try {
+      var v = parseInt(localStorage.getItem(KEY_VER) || "", 10);
+      if (v) return v;
+      // Номера нет: либо чистый телефон, либо данные, записанные до того, как
+      // версия появилась. Отличаем по наличию хоть чего-нибудь.
+      for (var i = 0; i < STORE_KEYS.length; i++) {
+        if (localStorage.getItem(STORE_KEYS[i]) !== null) return 1;
+      }
+      return DATA_VERSION;
+    } catch (e) { return DATA_VERSION; }
+  }
+
+  // Полная копия перед первой правкой. Пишется один раз на версию: повторный
+  // запуск не должен затереть копию уже изменёнными данными.
+  function backupBefore(from) {
+    var mark = "instrukciya_kopiya_v" + from;
+    try {
+      if (localStorage.getItem(mark) !== null) return;
+      var box = {};
+      STORE_KEYS.forEach(function (k) {
+        var raw = localStorage.getItem(k);
+        if (raw !== null) box[k] = raw;
+      });
+      localStorage.setItem(mark, JSON.stringify({ ts: Date.now(), data: box }));
+    } catch (e) {}
+  }
+
+  // Ступени. Каждая обязана быть идемпотентной: запуск дважды даёт тот же
+  // результат. Удалять отсюда нельзя ничего и никогда — человек может
+  // вернуться через год с данными старой версии, и цепочка должна пройти
+  // целиком. Ступени крошечные, а выброшенная — это чьи-то потерянные месяцы.
+  var MIGRATIONS = {};
+
+  function migrate() {
+    var from = readVersion();
+    if (from >= DATA_VERSION) {
+      try { localStorage.setItem(KEY_VER, String(DATA_VERSION)); } catch (e) {}
+      return;
+    }
+    backupBefore(from);
+    for (var v = from + 1; v <= DATA_VERSION; v++) {
+      if (MIGRATIONS[v]) { try { MIGRATIONS[v](); } catch (e) {} }
+    }
+    try { localStorage.setItem(KEY_VER, String(DATA_VERSION)); } catch (e) {}
+  }
 
   var slots = [];          // текущая сессия: { section, now, before, said, open, done }
   var archive = [];        // сохранённые записи
@@ -878,6 +946,7 @@
   var seen = {};           // вехи, которые человек уже закрыл сам
 
   function load() {
+    migrate();
     try {
       var raw = localStorage.getItem(KEY);
       if (raw) archive = JSON.parse(raw) || [];
@@ -1028,7 +1097,7 @@
   function entryText(e) {
     var s = sectionById(e.section);
     var d = localDate(e);
-    var head = dateShort(d) + ", " + timeShort(d) + " · " + (s ? s.tag : "");
+    var head = dateShort(d) + ", " + timeShort(d) + " · " + (s ? s.tag : fallbackTag());
     var lines = [head, e.now];
     if (e.before) lines.push("После: " + e.before);
     if (e.said) lines.push("Сказала: " + e.said);
@@ -2172,7 +2241,7 @@
         var d = localDate(e);
         t.textContent = archView === "sections"
           ? dateShort(d) + ", " + timeShort(d)
-          : timeShort(d) + " · " + (s ? s.tag : "");
+          : timeShort(d) + " · " + (s ? s.tag : fallbackTag());
         item.appendChild(t);
         item.appendChild(document.createTextNode(e.now));
         g.appendChild(item);
@@ -2812,7 +2881,14 @@
   // Telegram или заметок, где пустые строки между сообщениями не сохраняются,
   // молча восстанавливалась только первая запись. Молча — хуже всего: человек
   // видел «Восстановлено записей: 1» и считал, что остальных и не было.
-  var HEAD_RE = /^(\d{1,2})\.(\d{1,2})[,\s]+(\d{1,2}):(\d{2})\s*·\s*(#\S+)/;
+  // Тег необязателен намеренно (решение 0015). Раздел может быть упразднён или
+  // переименован, и тогда в тексте окажется чужой тег или пустое место. Раньше
+  // такая запись выбрасывалась целиком и молча — то есть правка кода стоила
+  // человеку записей. Теперь теряется только полка, а запись остаётся и
+  // ложится в «Пока не знаю». Точку-разделитель по-прежнему требуем: это
+  // подпись нашего формата, по ней шапка отличается от служебных строк,
+  // которые Telegram подставляет перед каждым сообщением.
+  var HEAD_RE = /^(\d{1,2})\.(\d{1,2})[,\s]+(\d{1,2}):(\d{2})\s*·\s*(#\S+)?/;
 
   function parseSent(text) {
     var out = [];
@@ -2830,8 +2906,7 @@
       var head = l.match(HEAD_RE);
       if (head) {
         flush();
-        var sec = TAG_BY_NAME[head[5]];
-        if (!sec) return;              // чужой тег: запись пропускаем целиком
+        var sec = TAG_BY_NAME[head[5]] || FALLBACK_SECTION;
 
         var now = new Date();
         var d = new Date(now.getFullYear(), parseInt(head[2], 10) - 1, parseInt(head[1], 10),
