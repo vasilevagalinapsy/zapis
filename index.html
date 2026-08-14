@@ -676,10 +676,16 @@
        страницу на главный экран». -->
   <section class="card milestone" id="znachok" hidden>
     <h2>Добавь на главный экран</h2>
-    <p>Пусть инструкция стоит на главном экране телефона, рядом с другими приложениями, — и открывай её только оттуда. Так записи всегда будут в одном месте.</p>
-    <p class="card-note">Кнопка называется по-разному. На айфоне, в Safari: «Поделиться» → «На экран „Домой"». На андроиде, в Chrome: меню «⋮» → «Добавить на главный экран» или «Установить приложение».</p>
-    <p class="card-note"><b>Почему до первой записи.</b> Записи лежат там, где сделаны. Начнёшь в браузере, а на главный экран добавишь потом — открывшаяся оттуда инструкция будет пустой, и переносить записи придётся файлом. Добавишь сейчас — переносить нечего.</p>
-    <button class="btn" id="znachokDone">Добавлено — открываю оттуда</button>
+    <p>Добавь ссылку на главный экран и открывай только оттуда. Так записи всегда будут в одном месте.</p>
+    <!-- Дальше — свёрнуто. Это карточка перед первой записью, и всё, что не
+         обязательно прочесть прямо сейчас, обязано быть спрятано: как нажать
+         и почему именно сейчас нужно тому, кто спросит. -->
+    <p class="card-note"><button type="button" class="linklike" id="znachokQ">+ Как это сделать и почему сейчас</button></p>
+    <div class="qcard" id="znachokQCard" hidden>
+      <p>Кнопка называется по-разному. На айфоне, в Safari: «Поделиться» → «На экран „Домой"». На андроиде, в Chrome: меню «⋮» → «Добавить на главный экран» или «Установить приложение».</p>
+      <p><b>Почему до первой записи.</b> Записи лежат там, где сделаны. Начнёшь в браузере, а на главный экран добавишь потом — открывшаяся оттуда инструкция будет пустой, и переносить записи придётся файлом. Добавишь сейчас — переносить нечего.</p>
+    </div>
+    <button class="btn" id="znachokDone">Добавлено</button>
     <p class="card-note"><button type="button" class="linklike" id="znachokSkip">Не сейчас — я в браузере</button></p>
   </section>
 
@@ -2380,6 +2386,7 @@
   (function () {
     var q = document.getElementById("vstrechaQ");
     var card = document.getElementById("vstrechaQCard");
+    card.hidden = true;
     q.addEventListener("click", function () {
       if (!card.hidden) { card.hidden = true; q.textContent = "+"; return; }
       card.innerHTML = "";
@@ -4744,6 +4751,18 @@
   // Обе кнопки закрывают карточку значка: разница только в том, поставил
   // человек его или отложил. Просить второй раз мы не будем — про значок
   // ещё раз напомнит только пустой экран внутри него, и там уже с файлом.
+  (function () {
+    var q = document.getElementById("znachokQ");
+    var card = document.getElementById("znachokQCard");
+    // Начальное состояние ставим кодом, а не полагаемся на атрибут в
+    // разметке: тогда «свёрнуто» — это одно место, а не два.
+    card.hidden = true;
+    q.addEventListener("click", function () {
+      card.hidden = !card.hidden;
+      q.textContent = (card.hidden ? "+ " : "– ") + "Как это сделать и почему сейчас";
+    });
+  })();
+
   ["znachokDone", "znachokSkip"].forEach(function (id) {
     document.getElementById(id).addEventListener("click", function () {
       start.znachok = true;
