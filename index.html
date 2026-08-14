@@ -536,6 +536,14 @@
      Прижатая вправо, она на узком экране отрывалась от строки. */
   .meetbar .dots { grid-column: 1 / -1; gap: 5px; margin-top: 6px; }
   .meetbar .qbtn { width: 22px; height: 22px; font-size: 13px; }
+  /* Заголовок карточки и «+» в одну строку: знак прижат вправо и не
+     подпирает заголовок, даже если тот переносится. */
+  .card-verh {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .card-verh h2 { flex: 1 1 auto; }
+  .card-verh .qbtn { flex: none; margin-top: 2px; }
+
   /* Выбранный раздел вместо плитки: имя, «+» и «сменить» одной строкой. */
   .chosen {
     display: flex; align-items: center; gap: 9px;
@@ -847,7 +855,14 @@
        с тем же именем. Инструкция открыта всегда и прирастает; файл — её
        сохранённый снимок. Три вещи назывались одним словом, осталась одна. -->
   <section class="card" id="progress" hidden>
-    <h2 id="progressTitle">Твоя инструкция</h2>
+    <!-- «+» справа от заголовка, как у встречи: что такое инструкция и что
+         про неё важнее всего. Висеть этому на экране каждый день незачем —
+         прочитывается один раз. -->
+    <div class="card-verh">
+      <h2 id="progressTitle">Твоя инструкция</h2>
+      <button type="button" class="qbtn" id="instrukciyaQ" aria-label="Что такое инструкция">+</button>
+    </div>
+    <div class="qcard" id="instrukciyaQCard" hidden></div>
     <div class="sum" id="progressSum"></div>
     <p class="card-note" id="progressDays"></p>
     <div class="daygrid" id="progressGrid"></div>
@@ -2342,6 +2357,7 @@
     bar.hidden = box.hidden;
     if (box.hidden) {
       document.getElementById("vstrechaQCard").hidden = true;
+      document.getElementById("instrukciyaQCard").hidden = true;
       return;
     }
 
@@ -2414,6 +2430,37 @@
         var p = document.createElement("p");
         p.textContent = part;
         card.appendChild(p);
+      });
+      card.hidden = false;
+      q.textContent = "–";
+    });
+  })();
+
+  // Что такое инструкция — тем же способом, что и встреча. Первый абзац
+  // отвечает на «что это», последний — на «что с этим делать», и он же
+  // самый важный: без файла всё держится на памяти одного телефона.
+  var INSTRUKCIYA_QCARD =
+    "Инструкция — это то, что собирается из твоих записей. Не отчёт и не дневник: факты о тебе, которые ты сама и записала.\n\n" +
+    "Она открыта с первой записи и прирастает после каждой встречи. Не награда в конце: смотреть на неё можно всегда, даже когда там ещё две строчки.\n\n" +
+    "Что в ней копится: твои повторы и где в них твой вход · что бывает до того, как накроет · твои люди, рядом с кем силы уходят и рядом с кем возвращаются · что тебе помогало · два описания одной ситуации с расстоянием в месяц · с чем ты хочешь разобраться дальше.\n\n" +
+    "Здесь наверху — только счётчики и дни: сколько записей в каком разделе и сколько дней ты пишешь. Сама инструкция целиком лежит в файле.\n\n" +
+    "Самое важное. Сохраняй её файлом хоть раз в неделю: «Мои записи» → «Сохранить инструкцию файлом». Внутри файла лежит копия всех записей, и из него всё восстанавливается целиком. Пока файла нет, всё держится на памяти одного телефона — а она не вечна.\n\n" +
+    "И ещё одно: ни одного слова, которого нет в твоих записях, в ней не появится. Что всё это значит, называешь ты.";
+
+  (function () {
+    var q = document.getElementById("instrukciyaQ");
+    var card = document.getElementById("instrukciyaQCard");
+    card.hidden = true;
+    q.addEventListener("click", function () {
+      if (!card.hidden) { card.hidden = true; q.textContent = "+"; return; }
+      card.innerHTML = "";
+      var h = document.createElement("h4");
+      h.textContent = "Что такое инструкция";
+      card.appendChild(h);
+      INSTRUKCIYA_QCARD.split("\n\n").forEach(function (part) {
+        var pp = document.createElement("p");
+        pp.textContent = part;
+        card.appendChild(pp);
       });
       card.hidden = false;
       q.textContent = "–";
