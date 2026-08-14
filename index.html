@@ -514,20 +514,27 @@
   }
 
   /* Двенадцать точек: закрытые встречи. Ничего не обнуляется. */
-  /* Полоса встречи, как в макете от 12.08: своя плашка сразу под шапкой,
-     а не строчка внутри карточки. Цвет мягкий синий — это не тревога и не
-     награда, а указатель. */
+  /* Полоса встречи была бледной плашкой на бледном фоне: светло-синее по
+     светло-серому, а точки из тонкой серой обводки — на телефоне их просто
+     не видно. Теперь это карточка, как все остальные: белая, с рамкой и
+     глиняной чертой слева. Номер встречи набран крупно и серифом, как
+     заголовки: это главное число здесь, а не подпись. */
   .meetbar {
-    display: grid; grid-template-columns: 1fr auto; align-items: center;
+    display: grid; grid-template-columns: 1fr auto; align-items: baseline;
     gap: 8px 10px;
-    background: var(--accent-soft); border-radius: var(--r-sm);
-    padding: 10px 12px; margin: 0 0 18px;
-    font-family: var(--sans); font-size: 12.5px; color: var(--ink-2);
+    background: var(--card); border: 1px solid var(--rule);
+    border-left: 3px solid var(--clay); border-radius: var(--r-sm);
+    box-shadow: var(--shadow);
+    padding: 13px 14px; margin: 0 0 18px;
+    font-family: var(--sans); font-size: 12.5px; color: var(--muted);
   }
-  /* Точки — второй строкой во всю ширину и по левому краю, под текстом.
-     Прижатые вправо, они на узком экране отрывались от строки и висели
-     сами по себе. */
-  .meetbar .dots { grid-column: 1 / -1; gap: 6px; }
+  .meetbar .nomer {
+    font-family: var(--serif); font-size: 19px; color: var(--ink);
+    display: block; margin-bottom: 2px;
+  }
+  /* Шкала — второй строкой во всю ширину и по левому краю, под текстом.
+     Прижатая вправо, она на узком экране отрывалась от строки. */
+  .meetbar .dots { grid-column: 1 / -1; gap: 5px; margin-top: 6px; }
   .meetbar .qbtn { width: 22px; height: 22px; font-size: 13px; }
   /* Выбранный раздел вместо плитки: имя, «+» и «сменить» одной строкой. */
   .chosen {
@@ -555,11 +562,18 @@
   }
   .chips-split::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
   .dots { display: flex; flex-wrap: wrap; gap: 7px; }
+  /* Пройденные встречи — заполненные полоски, оставшиеся — светлые.
+     Кружки в 9px из серой обводки на белом не читались вовсе. Полоска
+     набирает больше площади при той же высоте, и ряд из двенадцати
+     читается как шкала, а не как россыпь. */
   .dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    border: 1px solid var(--rule); background: none;
+    width: 14px; height: 8px; border-radius: 2px;
+    border: 0; background: var(--rule-soft);
+    box-shadow: inset 0 0 0 1px var(--rule);
   }
-  .dot.done { background: var(--accent); border-color: var(--accent); }
+  .dot.done { background: var(--accent); box-shadow: none; }
+  /* Ближайшая встреча — глиняная: видно, где стоишь, а не только что позади. */
+  .dot.next { background: var(--clay-soft); box-shadow: inset 0 0 0 1.5px var(--clay); }
 
   footer.foot {
     font-size: 12.5px; line-height: 1.55; color: var(--muted); text-align: center;
@@ -2368,8 +2382,9 @@
     var total = Math.max(12, done);
     for (var i = 1; i <= total; i++) {
       var d = document.createElement("span");
-      d.className = "dot" + (i <= done ? " done" : "");
-      d.title = "Встреча " + i + (i <= done ? " — закрыта" : "");
+      d.className = "dot" + (i <= done ? " done" : (i === done + 1 ? " next" : ""));
+      d.title = "Встреча " + i + (i <= done ? " — закрыта" :
+        (i === done + 1 ? " — ближайшая" : ""));
       host.appendChild(d);
     }
   }
@@ -2407,10 +2422,16 @@
     var el = document.getElementById("vstrechaLine");
     var n = nextMeeting();
     var left = daysToMeeting();
-    el.textContent = left === 0
-      ? "Встреча " + n + " · можно начинать"
-      : "Встреча " + n + " · до неё " + left + " " +
-        plural(left, ["день", "дня", "дней"]) + " с записями";
+    // Номер крупно, срок — подписью под ним. Одной строкой это читалось как
+    // служебная надпись и терялось.
+    el.innerHTML = "";
+    var nom = document.createElement("span");
+    nom.className = "nomer";
+    nom.textContent = "Встреча " + n;
+    el.appendChild(nom);
+    el.appendChild(document.createTextNode(left === 0
+      ? "можно начинать"
+      : "до неё " + left + " " + plural(left, ["день", "дня", "дней"]) + " с записями"));
     renderVstrechiDots();
   }
 
