@@ -838,11 +838,6 @@
        (настольный браузер), кнопка сама превращается в «Скопировать». -->
   <div class="save" id="saveBar">
     <button class="btn" id="sendShare" disabled>Отправить себе</button>
-    <p class="save-hint"><button type="button" class="linklike" id="inacheBtn">Другие способы</button></p>
-    <div class="row" id="inacheRow" hidden>
-      <button class="btn ghost" id="sendTg" disabled>В Telegram</button>
-      <button class="btn ghost" id="sendCopy" disabled>Скопировать</button>
-    </div>
     <div class="save-hint" id="saveHint">Сначала запиши хотя бы одно</div>
     <div class="save-hint" id="copyState"></div>
     <div class="manual" id="manualBox" hidden></div>
@@ -1693,7 +1688,7 @@
     // Кнопки закрыты только там, где записей нет вообще. Подсказка под ними
     // говорит числом, а не объяснением: что уйдёт, человек должен знать
     // до нажатия, и короткая строчка с числом читается быстрее двух фраз.
-    ["sendTg", "sendShare", "sendCopy"].forEach(function (id) {
+    ["sendShare"].forEach(function (id) {
       document.getElementById(id).disabled = archive.length === 0;
     });
     var fresh = unsentEntries().length;
@@ -3476,7 +3471,10 @@
     var title = document.createElement("span");
     title.className = "slot-title";
     var b = document.createElement("b");
-    b.textContent = slot.done && s ? s.name : "Запись " + (i + 1);
+    // Не «Запись 1»: строкой выше стоит «Сегодня: 4 записи», и два числа
+    // рядом считали разное — одно записи за день, другое место в этом
+    // заходе. Место в заходе показывает кружок слева, ему числа хватает.
+    b.textContent = slot.done && s ? s.name : "Новая запись";
     title.appendChild(b);
     if (slot.done) {
       var sub = document.createElement("span");
@@ -3954,13 +3952,6 @@
     });
   }
 
-  document.getElementById("sendTg").addEventListener("click", function () {
-    var text = outgoingText();
-    if (!text) return;
-    afterSend("Открываю Telegram");
-    openTelegram(text);
-  });
-
   document.getElementById("sendShare").addEventListener("click", function () {
     var text = outgoingText();
     if (!text) return;
@@ -3975,12 +3966,6 @@
     } else {
       copyOrFail(text, "Скопировано — вставь в заметки");
     }
-  });
-
-  document.getElementById("sendCopy").addEventListener("click", function () {
-    var text = outgoingText();
-    if (!text) return;
-    copyOrFail(text);
   });
 
   // ---------- архив ----------
@@ -4724,16 +4709,11 @@
   document.getElementById("vstrechaSave").addEventListener("click", doExport);
   document.getElementById("exportBtn2").addEventListener("click", doExport);
 
-  // Две кнопки отправки из трёх — по требованию. Телеграм есть не у всех,
-  // и «Отправить иначе» открывает остальные, а не прячет их насовсем.
+  // Кнопка ровно одна. Системное «Поделиться» само показывает все способы,
+  // какие у человека есть, — Telegram, MAX, WhatsApp, Заметки, почту; свой
+  // список рядом с ним был вторым меню, которое показывает меньше.
+  // Где системного окна нет, кнопка честно называется тем, что делает.
   (function () {
-    var btn = document.getElementById("inacheBtn");
-    var row = document.getElementById("inacheRow");
-    btn.addEventListener("click", function () {
-      row.hidden = !row.hidden;
-      btn.textContent = row.hidden ? "Другие способы" : "Скрыть";
-    });
-    // Системного окна нет — первая кнопка честно называется тем, что делает.
     if (!navigator.share) {
       document.getElementById("sendShare").textContent = "Скопировать себе";
     }
