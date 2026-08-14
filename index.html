@@ -512,13 +512,42 @@
      а не строчка внутри карточки. Цвет мягкий синий — это не тревога и не
      награда, а указатель. */
   .meetbar {
-    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    display: grid; grid-template-columns: 1fr auto; align-items: center;
+    gap: 8px 10px;
     background: var(--accent-soft); border-radius: var(--r-sm);
-    padding: 9px 12px; margin: 0 0 18px;
+    padding: 10px 12px; margin: 0 0 18px;
     font-family: var(--sans); font-size: 12.5px; color: var(--ink-2);
   }
-  .meetbar .dots { margin-left: auto; }
-  .meetbar .qbtn { width: 20px; height: 20px; font-size: 13px; }
+  /* Точки — второй строкой во всю ширину и по левому краю, под текстом.
+     Прижатые вправо, они на узком экране отрывались от строки и висели
+     сами по себе. */
+  .meetbar .dots { grid-column: 1 / -1; gap: 6px; }
+  .meetbar .qbtn { width: 22px; height: 22px; font-size: 13px; }
+  /* Выбранный раздел вместо плитки: имя, «+» и «сменить» одной строкой. */
+  .chosen {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 17px; margin: 0 0 12px;
+  }
+  .chosen b { font-weight: 600; }
+  .chosen .linklike { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .qbtn {
+    width: 24px; height: 24px; flex: none;
+    border-radius: 50%; border: 1px solid var(--rule);
+    background: var(--ground); color: var(--accent);
+    font-family: var(--sans); font-size: 14px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    line-height: 1; cursor: pointer; padding: 0;
+  }
+  /* Тонкая полоса со словом «или» между тремя крупными разделами и
+     остальными: это два разных вопроса, и глазу нужна граница. */
+  .chips-split {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--sans); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+    margin: 4px 2px 2px;
+  }
+  .chips-split::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
   .dots { display: flex; flex-wrap: wrap; gap: 7px; }
   .dot {
     width: 9px; height: 9px; border-radius: 50%;
@@ -819,9 +848,15 @@
   <section class="card insight" id="insight" hidden></section>
 
 
+  <!-- «Постоянный экран» из «Порядка экранов»: раздел — одно касание,
+       вопрос, три поля, «Готово», **одна** кнопка «Отдать себе». Две кнопки
+       отправки из трёх уходят под знак вопроса и достаются по требованию:
+       на главном экране жил разговор об устройстве программы, а не о
+       человеке. Телеграм оставлен первым — он подставляет текст сам. -->
   <div class="save" id="saveBar">
     <button class="btn" id="sendTg" disabled>Отправить себе в Telegram</button>
-    <div class="row">
+    <p class="save-hint"><button type="button" class="linklike" id="inacheBtn">Отправить иначе</button></p>
+    <div class="row" id="inacheRow" hidden>
       <button class="btn ghost" id="sendShare" disabled>MAX, Заметки…</button>
       <button class="btn ghost" id="sendCopy" disabled>Скопировать</button>
     </div>
@@ -1353,9 +1388,14 @@
     var v = null;
     try { v = JSON.parse(readKey(KEY_VSTRECHI) || "null"); } catch (e) { v = null; }
     if (!v || !(v.last > 0)) return;
-    var sled = Object.keys(v.razbor || {}).length ||
-               Object.keys(v.sdelano || {}).length ||
-               (v.konverty || []).some(function (k) { return k && k.openTs; });
+    // След настоящей встречи — только разбор «Пока не знаю»: его вторая
+    // ступень не пишет никогда. А вот sdelano["2"], sdelano["4"] и openTs
+    // она ставит сама, по старым вехам и по старому конверту, — и принимать
+    // их за след значит оставить человека на встрече, которой не было.
+    var svoiUprazhneniya = Object.keys(v.sdelano || {}).filter(function (k) {
+      return k !== "2" && k !== "4";
+    });
+    var sled = Object.keys(v.razbor || {}).length || svoiUprazhneniya.length;
     if (sled) return;
     v.last = 0;
     v.base = 0;
@@ -1943,7 +1983,7 @@
     box.appendChild(makeField("Что замечаю", "", ucheba.now,
       "Тяжесть в плечах, к вечеру",
       function (v) { ucheba.now = v; }));
-    box.appendChild(makeField("После чего · с кем", "", ucheba.before,
+    box.appendChild(makeField("После чего · во время чего · рядом с кем · фон", "", ucheba.before,
       "После совещания",
       function (v) { ucheba.before = v; }));
     box.appendChild(makeField("Что говорю себе или делаю", "", ucheba.said,
@@ -3454,48 +3494,90 @@
     body.className = "slot-body";
     body.hidden = !slot.open;
 
-    // выбор раздела
-    var ask = document.createElement("p");
-    ask.className = "ask";
-    ask.textContent = "Куда это?";
-    body.appendChild(ask);
+    // Выбор раздела. Пока не выбран — плитка целиком; выбрал — плитка
+    // сворачивается, остаётся имя раздела, «+» и «сменить». Так в макете, и
+    // так форма помещается на экран: одиннадцать кнопок над тремя полями
+    // не оставляли места самой записи.
+    var vybran = !!slot.section;
 
-    var chips = document.createElement("div");
-    chips.className = "chips";
-    visibleSections().forEach(function (sec) {
-      var c = document.createElement("button");
-      c.className = "chip" + (sec.big ? " big" : "") + (sec.wide ? " service" : "");
-      c.type = "button";
-      c.setAttribute("aria-pressed", slot.section === sec.id ? "true" : "false");
-      var nm = document.createElement("span");
-      nm.textContent = sec.name;
-      var tg = document.createElement("small");
-      tg.textContent = sec.tag;
-      c.appendChild(nm); c.appendChild(tg);
-      c.addEventListener("click", function () {
-        slot.section = sec.id;
-        render();
-        var fresh = slotsEl.children[i];            // после render DOM пересобран
-        var ta = fresh && fresh.querySelector("textarea");
-        if (ta) ta.focus();
+    if (!vybran) {
+      var ask = document.createElement("p");
+      ask.className = "ask";
+      ask.textContent = "Куда это?";
+      body.appendChild(ask);
+
+      var askSec = document.createElement("p");
+      askSec.className = "card-note";
+      askSec.style.cssText = "margin:-6px 0 10px";
+      askSec.textContent = "Выбирай ровно секунду.";
+      body.appendChild(askSec);
+
+      var chips = document.createElement("div");
+      chips.className = "chips";
+      var bylKrupny = false;
+      visibleSections().forEach(function (sec) {
+        // Тонкая полоса со словом «или» между тремя крупными и остальными:
+        // это два разных вопроса. Крупные — какого рода переживание,
+        // мелкие — про что оно.
+        if (bylKrupny && !sec.big) {
+          var split = document.createElement("div");
+          split.className = "chips-split";
+          split.textContent = "или";
+          chips.appendChild(split);
+          bylKrupny = false;
+        }
+        if (sec.big) bylKrupny = true;
+
+        var c = document.createElement("button");
+        c.className = "chip" + (sec.big ? " big" : "") + (sec.wide ? " service" : "");
+        c.type = "button";
+        c.setAttribute("aria-pressed", "false");
+        var nm = document.createElement("span");
+        nm.textContent = sec.name;
+        var tg = document.createElement("small");
+        tg.textContent = sec.tag;
+        c.appendChild(nm); c.appendChild(tg);
+        c.addEventListener("click", function () {
+          slot.section = sec.id;
+          render();
+          var fresh = slotsEl.children[i];            // после render DOM пересобран
+          var ta = fresh && fresh.querySelector("textarea");
+          if (ta) ta.focus();
+        });
+        chips.appendChild(c);
       });
-      chips.appendChild(c);
-    });
-    body.appendChild(chips);
+      body.appendChild(chips);
+    }
 
     if (slot.section) {
       var sec = sectionById(slot.section);
 
-      // Второй уровень объяснения: открывается по «+» и читается двадцать
-      // секунд. Первый уровень — подпись под кнопкой раздела, она видна
-      // всегда. Третий, разбор в справочнике, ждёт самого справочника.
-      // Объяснение приходит тогда, когда понадобилось, а не заранее.
+      // Свёрнутая плитка: имя раздела, «+» с объяснением и «сменить».
+      var chosen = document.createElement("p");
+      chosen.className = "chosen";
+      var chName = document.createElement("b");
+      chName.textContent = sec.name;
+      chosen.appendChild(chName);
+
       var lessonBtn = document.createElement("button");
-      lessonBtn.className = "lesson-btn";
+      lessonBtn.className = "qbtn";
       lessonBtn.type = "button";
-      lessonBtn.textContent = (slot.lessonOpen ? "– " : "+ ") + "Что сюда писать";
+      lessonBtn.setAttribute("aria-label", "Что сюда писать");
+      lessonBtn.textContent = slot.lessonOpen ? "–" : "+";
       lessonBtn.addEventListener("click", function () { slot.lessonOpen = !slot.lessonOpen; render(); });
-      body.appendChild(lessonBtn);
+      chosen.appendChild(lessonBtn);
+
+      var smenit = document.createElement("button");
+      smenit.className = "linklike";
+      smenit.type = "button";
+      smenit.textContent = "сменить";
+      smenit.addEventListener("click", function () {
+        slot.section = "";
+        slot.lessonOpen = false;
+        render();
+      });
+      chosen.appendChild(smenit);
+      body.appendChild(chosen);
 
       if (slot.lessonOpen) body.appendChild(kartochkaRazdela(sec));
 
@@ -3531,8 +3613,8 @@
       // длящимся состоянием упирался. Фон — законный ответ, и он проверяемый:
       // если он повторится, это будет видно по записям, а не по догадке.
       body.appendChild(makeField(
-        "После чего · с кем",
-        "Событие или фон: «после совещания», «третий день перед месячными», «вторая неделя без выходных». Не знаешь — так и напиши." +
+        "После чего · во время чего · рядом с кем · фон",
+        "Событие или фон: «после совещания», «по дороге домой», «вторая неделя без выходных», «третий день дожди». Не знаешь — так и напиши." +
           (sec.name_needed ? " Если рядом был человек — напиши имя." : ""),
         slot.before,
         sec.ex[1],
@@ -3939,7 +4021,7 @@
     "Когда надо решить, соглашаться или нет.",
     "Когда нет сил и нужно восстановиться.",
     "Когда уже не знаешь, чему верить — мыслям или ощущениям.",
-    "Когда опять сорвалось и уже ругаешь себя.",
+    "Когда весь вечер прокручиваешь разговор, который давно кончился.",
     "Когда не понимаешь, почему опять так вышло.",
     "Когда снова думаешь, что проблема в тебе.",
     "Когда не понимаешь, почему так сильно реагируешь.",
@@ -4633,6 +4715,17 @@
   // только что приросла, и из «Моих записей», где это делают по своей воле.
   document.getElementById("vstrechaSave").addEventListener("click", doExport);
   document.getElementById("exportBtn2").addEventListener("click", doExport);
+
+  // Две кнопки отправки из трёх — по требованию. Телеграм есть не у всех,
+  // и «Отправить иначе» открывает остальные, а не прячет их насовсем.
+  (function () {
+    var btn = document.getElementById("inacheBtn");
+    var row = document.getElementById("inacheRow");
+    btn.addEventListener("click", function () {
+      row.hidden = !row.hidden;
+      btn.textContent = row.hidden ? "Отправить иначе" : "Скрыть";
+    });
+  })();
 
   // ---------- восстановление ----------
 
