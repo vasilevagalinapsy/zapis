@@ -1522,6 +1522,18 @@
     if (raw) {
       try {
         archive = JSON.parse(raw) || [];
+        // Не запись, а дырка в массиве — и страница не открывалась совсем:
+        // первое же обращение к e.ts падало, человек видел белый экран, а его
+        // записи лежали рядом целые. Разбор чужого текста, слияние с файлом
+        // и оборванная запись — три способа получить сюда null. Выкидываем
+        // молча: сказать тут нечего, а показать остальное можно.
+        if (!(archive instanceof Array)) archive = [];
+        var bylo = archive.length;
+        archive = archive.filter(function (e) { return e && typeof e === "object"; });
+        // Дырку выкидываем и из памяти телефона тоже, иначе она встречает
+        // страницу при каждом открытии. Записи при этом не трогаются: пишем
+        // ровно то, что прочли, минус то, что записью не является.
+        if (archive.length !== bylo) persist();
       } catch (e) {
         // Строка в памяти цела, испорчен разбор. Затирать её нельзя: это
         // единственная копия. Откладываем под свой ключ и работаем дальше —
@@ -1545,7 +1557,10 @@
     if (typeof vstrechi.base !== "number") vstrechi.base = 0;
     if (!vstrechi.razbor) vstrechi.razbor = {};
     if (!vstrechi.sdelano) vstrechi.sdelano = {};
-    if (!vstrechi.konverty) vstrechi.konverty = [];
+    // Конверты — список объектов и ничего кроме: по ним потом ходят сортировкой
+    // и сравнением по ts, и одна дырка роняла бы всю встречу.
+    if (!(vstrechi.konverty instanceof Array)) vstrechi.konverty = [];
+    vstrechi.konverty = vstrechi.konverty.filter(function (k) { return k && typeof k === "object"; });
 
     vozvraty = readJSON(KEY_VOZVRATY, vozvraty);
     if (!vozvraty || typeof vozvraty !== "object") vozvraty = {};
@@ -2561,8 +2576,13 @@
     var out = [];
     var days = uniqueDays();
     var counts = countsBySection();
-    var used = SECTIONS.filter(function (s) { return counts[s.id] > 0; }).length;
-    var total = visibleSections().length;
+    // Считаем по видимым разделам с обеих сторон. Раньше слева стояли все
+    // SECTIONS, а справа только видимые: у человека со старыми записями
+    // в упразднённых «Дежурных фразах» выходило «только в 2 раздела из 11»,
+    // где одного из двух на экране нет вовсе.
+    var vidimye = visibleSections();
+    var used = vidimye.filter(function (s) { return counts[s.id] > 0; }).length;
+    var total = vidimye.length;
 
     if (days >= 2 && used <= 2) {
       out.push({ k: "uzko", t: "Записи ложатся только в " + used + " " + plural(used, ["раздел", "раздела", "разделов"]) + " из " + total + "." });
@@ -2570,12 +2590,19 @@
 
     if (days >= 5) {
       // Упразднённый раздел в пустые не попадает: пустым он будет всегда.
+      // «Пока не знаю» тоже: это место для того, чему места не нашлось,
+      // и пустым оно значит только, что всё уложилось.
       var empty = visibleSections().filter(function (s) { return !s.wide && counts[s.id] === 0; });
+      // Имя у обоих одно. Наблюдение здесь одно — «есть пустые разделы»;
+      // сколько их сегодня и какой именно, дело дня. С раздельными именами
+      // получалась дыра: закрыл при двух пустых, назавтра записал в один —
+      // имя стало другим, и блок возвращался без всякой встречи, ровно
+      // после того как человек на него отозвался.
       if (empty.length === 1) {
-        out.push({ k: "pusto:" + empty[0].id, t: "В разделе «" + empty[0].name + "» за " + days + " " +
+        out.push({ k: "pusto", t: "В разделе «" + empty[0].name + "» за " + days + " " +
           plural(days, ["день", "дня", "дней"]) + " ни одной записи." });
       } else if (empty.length > 1) {
-        out.push({ k: "pusto:mnogo", t: "Разделов без единой записи: " + empty.length + "." });
+        out.push({ k: "pusto", t: "Разделов без единой записи: " + empty.length + "." });
       }
     }
 
@@ -2584,9 +2611,10 @@
 
   // «Что уже видно» жило без единого правила: считалось заново при каждой
   // загрузке и висело на главном экране вечно — а исчезнуть могло никогда.
-  // Не пишет человек в «Пока не знаю» — значит каждый день читает, что
-  // не пишет. Наблюдение о форме записей прочитывается один раз; висящее
-  // каждый день, оно перестаёт быть подсказкой и становится укором.
+  // «Силы появились» записывают реже всех: не пишет туда человек — значит
+  // каждый день читает, что не пишет. Наблюдение о форме записей
+  // прочитывается один раз; висящее каждый день, оно перестаёт быть
+  // подсказкой и становится укором.
   //
   // Правило взято у возврата, чтобы человеку не учить второе: «Понятно»
   // закрывает, и то же наблюдение возвращается только после следующей
@@ -4796,6 +4824,10 @@
       env: env,
       seen: seen,          // прежние вехи: файл, сохранённый старым кодом, их знал
       vstrechi: vstrechi,  // без этого смена телефона откатывает курс в начало
+      // Без этого на новом телефоне все возвраты придут заново: «каждое
+      // совпадение показывается один раз» держится на vozvraty.bylo, и
+      // карточка-объяснение, которая бывает единожды, тоже пришла бы второй раз.
+      vozvraty: vozvraty,
       final: finalData,
       next: readKey(KEY_Q) || "",
       start: start
@@ -4937,17 +4969,26 @@
       if (!m) { toast("В этом файле нет копии записей"); return; }
       var data;
       try { data = JSON.parse(m[1].replace(/\\u003c/g, "<")); } catch (e) { data = null; }
-      if (!data || !data.archive) { toast("Файл не читается"); return; }
+      // Массив, а не просто «что-то есть»: копия могла прийти из чужого
+      // файла или испортиться при пересылке, и тогда слияние падало молча —
+      // человек нажимал «восстановить» и не получал даже сообщения.
+      if (!data || !(data.archive instanceof Array)) { toast("Файл не читается"); return; }
 
       var added = mergeEntries(data.archive);
 
+      // Записи слиты и сохранены — дальше идёт довосстановление: конверт,
+      // вехи, встречи, возвраты. Файл в этот момент уже показал, что он
+      // кривой хотя бы отчасти, и споткнуться на конвертах здесь значит
+      // оставить человека без сообщения в ту самую минуту, когда он
+      // восстанавливается. Записи в этом случае всё равно вернулись.
+      try {
       // Остальное восстанавливаем, только если своего ещё нет.
       // Конверт — по-другому: своим считается запечатанный раньше. Человек,
       // начавший заново в новом месте, запечатывает второй конверт сегодня,
       // и он затирал бы настоящий, двухнедельной давности. А весь смысл
       // конверта в расстоянии между двумя описаниями.
-      if (data.env && (data.env.then || "").trim()) {
-        var mine = (env.then || "").trim();
+      if (data.env && String(data.env.then || "").trim()) {
+        var mine = String(env.then || "").trim();
         var older = data.env.ts && (!env.ts || data.env.ts < env.ts);
         if (!mine || older) { env = data.env; saveEnv(); renderEnvelope(); }
       }
@@ -4968,17 +5009,42 @@
           if (!d[k]) return;
           Object.keys(d[k]).forEach(function (i) { vstrechi[k][i] = d[k][i]; });
         });
-        (d.konverty || []).forEach(function (k) {
-          var est = vstrechi.konverty.some(function (m) { return m.ts === k.ts; });
+        // Дырка в списке конвертов роняла восстановление целиком: сравнение
+        // шло по m.ts, а m мог оказаться null. Берём только конверты.
+        (d.konverty instanceof Array ? d.konverty : []).forEach(function (k) {
+          if (!k || typeof k !== "object") return;
+          var est = vstrechi.konverty.some(function (m) { return m && m.ts === k.ts; });
           if (!est) vstrechi.konverty.push(k);
         });
         vstrechi.konverty.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
         saveVstrechi();
       }
+      // Показанные возвраты складываются, а не заменяются: показанное здесь
+      // и показанное там — всё показано. Счётчики берём больший, паузу —
+      // позднейшую. Иначе после переноса продукт начнёт долбить человека
+      // теми же совпадениями, а это ровно то, что запрещено правилами.
+      if (data.vozvraty && typeof data.vozvraty === "object") {
+        var dv = data.vozvraty;
+        ["bylo", "vidy", "vidno"].forEach(function (k) {
+          if (!dv[k]) return;
+          Object.keys(dv[k]).forEach(function (i) {
+            if (!vozvraty[k][i]) vozvraty[k][i] = dv[k][i];
+          });
+        });
+        vozvraty.vsego = Math.max(vozvraty.vsego || 0, dv.vsego || 0);
+        vozvraty.posledniy = Math.max(vozvraty.posledniy || 0, dv.posledniy || 0);
+        saveVozvraty();
+      }
       if (data.final && finalEmpty()) { finalData = data.final; normalizeFinal(); saveFinal(); }
       if (data.start) { start.urok = start.urok || data.start.urok; start.alarm = start.alarm || data.start.alarm;
                         start.frazy = start.frazy || data.start.frazy; saveStart(); }
       if (data.next && !readKey(KEY_Q)) writeKey(KEY_Q, data.next);
+      } catch (err) {
+        render();
+        toast(added ? "Записи вернулись: " + added + ". Остальное в файле не прочиталось"
+                    : "Записи были на месте. Остальное в файле не прочиталось");
+        return;
+      }
 
       render();
       toast(added ? "Восстановлено записей: " + added : "Всё это уже было на месте");
