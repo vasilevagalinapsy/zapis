@@ -5043,6 +5043,59 @@
   //
   // Только числа. Ни одной записи и ни одного слова из них: «твоих записей
   // я не вижу» — техническая правда, и она не ломается ради удобства разбора.
+  // Строка, которую браузер сообщает о себе, читаться человеком не обязана.
+  // «Mozilla/5.0» в ней пишет каждый браузер на земле, включая те, что к
+  // Mozilla отношения не имеют; «KHTML, like Gecko» — след движка, которого
+  // в Safari нет; «Safari/604.1» допишет и Chrome на андроиде. Это пароль
+  // совместимости, а не описание телефона: сайты когда-то отказывались
+  // работать с браузерами, чьих имён не знали, и все стали называться всеми.
+  //
+  // Достаём три куска, которые правда что-то значат: чем открыто, какая
+  // система, какой браузер. Целая строка остаётся ниже — в редкой поломке
+  // важна точная версия движка, а по разобранному виду её не восстановить.
+  function ustroystvo(ua) {
+    ua = String(ua || "");
+    if (!ua) return "";
+
+    var sistema = "";
+    var m;
+    if ((m = ua.match(/\((iPhone|iPad|iPod)[^)]*?OS (\d+)[._](\d+)/))) {
+      sistema = m[1] + " · iOS " + m[2] + "." + m[3];
+    } else if ((m = ua.match(/Android (\d+(?:\.\d+)?)/))) {
+      sistema = "Android " + m[1];
+    } else if ((m = ua.match(/Mac OS X (\d+)[._](\d+)/))) {
+      sistema = "Mac · " + m[1] + "." + m[2];
+    } else if (/Windows NT/.test(ua)) {
+      sistema = "Windows";
+    } else if (/Linux|X11/.test(ua)) {
+      sistema = "Linux";
+    }
+
+    // Порядок здесь несущий. На айфоне внутри любого браузера сидит Safari,
+    // и каждый дописывает своё имя рядом с чужими: Chrome называется
+    // «CriOS … Safari», Яндекс — «YaBrowser … Chrome … Safari». Значит
+    // ищем от самого редкого имени к самому общему, а Safari — последним:
+    // он единственный, кто своего имени никому не одалживает.
+    var IMENA = [
+      [/YaBrowser|YaApp|YaSearchBrowser/, "Яндекс"],
+      [/EdgiOS|EdgA|\bEdge?\//, "Edge"],
+      [/OPiOS|OPR\/|\bOpera/, "Opera"],
+      [/SamsungBrowser/, "Samsung"],
+      [/FxiOS|Firefox/, "Firefox"],
+      [/CriOS|Chrome|Chromium/, "Chrome"],
+      [/Safari/, "Safari"]
+    ];
+    var brauzer = "";
+    for (var i = 0; i < IMENA.length; i++) {
+      if (IMENA[i][0].test(ua)) { brauzer = IMENA[i][1]; break; }
+    }
+
+    var chasti = [];
+    if (sistema) chasti.push(sistema);
+    if (brauzer) chasti.push(brauzer);
+    return chasti.join(" · ");
+  }
+
   function diagLines() {
     var days = 0;
     try { days = dayOfPractice(); } catch (e) {}
@@ -5050,7 +5103,7 @@
       ? Math.round((Date.now() - lastSent) / 86400000) + " дн. назад"
       : "ни разу";
     var device = "";
-    try { device = String(navigator.userAgent || "").slice(0, 120); } catch (e) {}
+    try { device = String(navigator.userAgent || ""); } catch (e) {}
 
     // Конвертов теперь несколько; берём счёт и состояние текущего.
     var konv = (vstrechi.konverty || []).length;
@@ -5078,7 +5131,11 @@
     if (archiveUnread) out.push("!! прежние записи не разобрались" +
       (archiveParked ? ", отложены под свой ключ" : ", отложить не удалось"));
 
-    out.push("устройство: " + device);
+    // Разобранное — выше, целая строка — последней: она длинная и нужна
+    // редко, и человеку, который дописывает письмо своими словами, не надо
+    // продираться через неё к своему месту.
+    out.push("устройство: " + (ustroystvo(device) || "не разобрать"));
+    out.push("строка браузера: " + (device ? device.slice(0, 160) : "нет"));
     return out.join("\n");
   }
 
