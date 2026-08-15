@@ -1553,6 +1553,10 @@
     if (typeof vozvraty.posledniy !== "number") vozvraty.posledniy = 0;
     if (!vozvraty.bylo) vozvraty.bylo = {};
     if (!vozvraty.vidy) vozvraty.vidy = {};
+    // Закрытые наблюдения «Что уже видно». Поле добавлено 15.08 — по контракту
+    // данных только дополнением ([решение 0015]): у кого его нет, тот прочтётся
+    // как «ничего не закрыто», и ступень миграции для этого не нужна.
+    if (!vozvraty.vidno) vozvraty.vidno = {};
   }
 
   function saveSeen() { writeKey(KEY_SEEN, JSON.stringify(seen)); }
@@ -2549,6 +2553,10 @@
   // Динамика продукта живёт здесь: это видно только тому, кто накопил.
   // Про форму наблюдения — да. Про содержание жизни — нет: повторяющиеся имена
   // человек находит сам в сборке, это и есть то, ради чего он вёл наблюдения.
+  // У каждого наблюдения своё имя (k). Текст меняется каждый день — в нём
+  // стоят числа, — а имя постоянное: по нему и помнится, что человек это
+  // уже закрыл. Если бы помнили по тексту, наблюдение возвращалось бы
+  // назавтра с новым числом дней и правило не работало бы вовсе.
   function insights() {
     var out = [];
     var days = uniqueDays();
@@ -2557,26 +2565,52 @@
     var total = visibleSections().length;
 
     if (days >= 2 && used <= 2) {
-      out.push("Записи ложатся только в " + used + " " + plural(used, ["раздел", "раздела", "разделов"]) + " из " + total + ".");
+      out.push({ k: "uzko", t: "Записи ложатся только в " + used + " " + plural(used, ["раздел", "раздела", "разделов"]) + " из " + total + "." });
     }
 
     if (days >= 5) {
       // Упразднённый раздел в пустые не попадает: пустым он будет всегда.
       var empty = visibleSections().filter(function (s) { return !s.wide && counts[s.id] === 0; });
       if (empty.length === 1) {
-        out.push("В разделе «" + empty[0].name + "» за " + days + " " +
-          plural(days, ["день", "дня", "дней"]) + " ни одной записи.");
+        out.push({ k: "pusto:" + empty[0].id, t: "В разделе «" + empty[0].name + "» за " + days + " " +
+          plural(days, ["день", "дня", "дней"]) + " ни одной записи." });
       } else if (empty.length > 1) {
-        out.push("Разделов без единой записи: " + empty.length + ".");
+        out.push({ k: "pusto:mnogo", t: "Разделов без единой записи: " + empty.length + "." });
       }
     }
 
     return out.slice(0, 2);
   }
 
+  // «Что уже видно» жило без единого правила: считалось заново при каждой
+  // загрузке и висело на главном экране вечно — а исчезнуть могло никогда.
+  // Не пишет человек в «Пока не знаю» — значит каждый день читает, что
+  // не пишет. Наблюдение о форме записей прочитывается один раз; висящее
+  // каждый день, оно перестаёт быть подсказкой и становится укором.
+  //
+  // Правило взято у возврата, чтобы человеку не учить второе: «Понятно»
+  // закрывает, и то же наблюдение возвращается только после следующей
+  // встречи. Встреча и есть место, где смотрят на накопленное.
+  //
+  // Возвраты этим правилом не задеты: они показывают человеку его же
+  // записи, у них свои правила, и трогать их незачем.
+  function vidnoSkryto(k) {
+    var bylo = vozvraty.vidno[k];
+    if (!bylo) return false;
+    return (vstrechi.last || 0) <= (bylo.vstrecha || 0);
+  }
+
+  function zakrytVidno(keys) {
+    keys.forEach(function (k) {
+      vozvraty.vidno[k] = { ts: Date.now(), vstrecha: vstrechi.last || 0 };
+    });
+    saveVozvraty();
+  }
+
   function renderInsight() {
     var box = document.getElementById("insight");
     var list = (archive.length >= 6 && startReady()) ? insights() : [];
+    list = list.filter(function (o) { return !vidnoSkryto(o.k); });
     box.hidden = list.length === 0;
     if (box.hidden) return;
 
@@ -2584,11 +2618,24 @@
     var h = document.createElement("h2");
     h.textContent = "Что уже видно";
     box.appendChild(h);
-    list.forEach(function (t) {
+    list.forEach(function (o) {
       var p = document.createElement("p");
-      p.textContent = t;
+      p.textContent = o.t;
       box.appendChild(p);
     });
+
+    // Та же кнопка и то же слово, что у возврата: закрывается одинаково всё,
+    // что страница говорит о записях.
+    var btn = document.createElement("button");
+    btn.className = "btn ghost";
+    btn.type = "button";
+    btn.id = "insightOk";
+    btn.textContent = "Понятно";
+    btn.addEventListener("click", function () {
+      zakrytVidno(list.map(function (o) { return o.k; }));
+      renderInsight();
+    });
+    box.appendChild(btn);
   }
 
   // Имена — материал седьмого упражнения, «Твои люди». Отдавать их раньше
