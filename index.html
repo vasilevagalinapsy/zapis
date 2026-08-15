@@ -342,8 +342,9 @@
   .razbor-text { font-size: 15.5px; color: var(--ink); }
   .razbor-row .linklike { align-self: flex-start; }
 
-  .insight { border-left: 2px solid var(--clay); }
+  .insight, .oshibka { border-left: 2px solid var(--clay); }
   .insight p { font-size: 15.5px; color: var(--ink-2); }
+  .oshibka textarea { width: 100%; margin-top: 8px; font-size: 13px; }
 
   /* Возврат. Заголовок капсом и записи целиком: продукт кладёт рядом, а
      называет человек. Ни одного слова, которого нет в его записях. */
@@ -642,6 +643,28 @@
   <p class="warn" id="saveWarn" hidden><b>Записать в память телефона не получается.</b> Последнее могло не сохраниться. Отправь себе всё, что есть, кнопкой внизу — из этого текста записи восстанавливаются целиком. Так бывает, когда память телефона переполнена или страница открыта в режиме инкогнито.</p>
 
   <p class="warn" id="readWarn" hidden><b>Прежние записи не открылись.</b> Они не удалены и ничем не затёрты — отложены отдельно, целой строкой. Вернуть их можно из сохранённого файла или из сообщений, которые ты себе отправляешь: внизу, «Мои записи» → «Если записи пропали».</p>
+
+  <!-- Сеть на непойманное исключение. Любая поломка в отрисовке оставляла
+       человека перед пустым или полурисованным экраном, и он решал, что
+       записи пропали. Они не пропали: они лежат в памяти телефона отдельно
+       от кода, и поломка их не трогает.
+
+       Разметка стоит здесь, а не собирается кодом, нарочно: собирать её
+       нечем ровно тогда, когда она нужна. Кнопка ищет свой обработчик в тот
+       момент, когда карточка показывается, — до этого его может не быть.
+
+       Работа этой карточки одна: сказать, что записи целы, и дать вынести
+       их наружу. Если и сохранение файлом сломано, ниже открывается сырая
+       копия — её можно скопировать руками. -->
+  <section class="card oshibka" id="oshibka" hidden>
+    <h2>Что-то сломалось</h2>
+    <p>Записи целы. Они лежат в памяти этого телефона, отдельно от страницы, и поломка их не трогает.</p>
+    <p>Сохрани их файлом прямо сейчас: файл открывается где угодно, и из него всё возвращается.</p>
+    <button class="btn" type="button" id="oshibkaSave">Сохранить инструкцию файлом</button>
+    <p class="card-note" id="oshibkaMail" hidden>И напиши мне — <a id="oshibkaMailLink" href="#">на почту</a>. Что именно сломалось, подставится в письмо само.</p>
+    <p class="card-note" id="oshibkaRawNote" hidden>Файлом не вышло. Скопируй отсюда весь текст и пришли мне — записи внутри него.</p>
+    <textarea id="oshibkaRaw" rows="6" hidden></textarea>
+  </section>
 
   <!-- Экран для того, кому переслали ссылку.
        Он пришёл с одним вопросом: «что это?» — и экран отвечает ровно на него,
@@ -1015,6 +1038,77 @@
 <script>
 (function () {
   "use strict";
+
+  // ---------- сеть на непойманное исключение ----------
+  // Ставится первой строкой, до всего остального: поломка, случившаяся при
+  // чтении памяти или при первой отрисовке, — самая вероятная из всех, и
+  // ловить её надо раньше, чем появится что-либо, что может её вызвать.
+  //
+  // Записи от кода отдельно: они в памяти телефона, и никакая ошибка их не
+  // трогает. Человеку об этом сказать некому, поэтому говорит эта карточка.
+  var polomkaPokazana = false;
+
+  function pokazatPolomku(chto) {
+    // Одна поломка тянет за собой десяток следующих: показываем первую.
+    if (polomkaPokazana) return;
+    polomkaPokazana = true;
+    try {
+      var box = document.getElementById("oshibka");
+      if (!box) return;
+      box.hidden = false;
+
+      // Обработчик вешаем здесь: если код упал раньше своей расстановки
+      // обработчиков, у кнопки их нет вовсе.
+      var knopka = document.getElementById("oshibkaSave");
+      if (knopka) knopka.addEventListener("click", function () {
+        var vyshlo = false;
+        try {
+          // Если сломалось само чтение памяти, archive пуст, а записи
+          // в телефоне есть. Собирать файл не из чего, и «Пока нечего
+          // сохранять» было бы неправдой в худшую минуту.
+          if (archive && archive.length) { doExport(); vyshlo = true; }
+        } catch (e) {}
+        // Сохранение могло сломаться тем же самым. Тогда отдаём сырую копию
+        // памяти: читать её человеку не надо, надо только скопировать.
+        if (!vyshlo) pokazatSyroe();
+      });
+
+      // Адрес берём из константы, а не пишем второй раз в разметке. Если
+      // упало до неё — строчки про почту просто не будет, врать нечем.
+      try {
+        if (typeof POCHTA === "string" && POCHTA) {
+          var telo = "Что-то сломалось на странице записи.\n\n" +
+            "Что было перед этим:\n\n\n" + "— — — служебное — — —\n" + String(chto || "");
+          var ssylka = document.getElementById("oshibkaMailLink");
+          ssylka.href = "mailto:" + POCHTA +
+            "?subject=" + encodeURIComponent("Инструкция ко мне — сломалось") +
+            "&body=" + encodeURIComponent(telo);
+          document.getElementById("oshibkaMail").hidden = false;
+        }
+      } catch (e) {}
+    } catch (e) {}
+  }
+
+  function pokazatSyroe() {
+    try {
+      var syroe = {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf("instrukciya") === 0) syroe[k] = localStorage.getItem(k);
+      }
+      var pole = document.getElementById("oshibkaRaw");
+      pole.value = JSON.stringify(syroe);
+      pole.hidden = false;
+      document.getElementById("oshibkaRawNote").hidden = false;
+      pole.focus();
+      pole.select();
+    } catch (e) {}
+  }
+
+  window.onerror = function (soobshenie, gde, stroka) {
+    pokazatPolomku(String(soobshenie || "") + (stroka ? " · строка " + stroka : ""));
+    return false;                                    // консоль пусть тоже видит
+  };
 
   // Уроки привязаны к разделу, а не ко дню: человек слушает, когда столкнулся.
   // Тексты ниже — каркас под надиктовку, не финальные формулировки.
