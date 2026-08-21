@@ -1214,7 +1214,15 @@
     <div id="uchebaFields"></div>
     <button class="btn" id="uchebaDone">Готово</button>
 
-    <p class="card-note lost">Записи уже были, а сейчас их нет? <button type="button" class="linklike" id="lostBtn">Восстановить их</button></p>
+    <p class="card-note lost">Записи уже были, а сейчас их нет?
+      <button type="button" class="linklike" id="lostFileBtn">Из файла</button> ·
+      <button type="button" class="linklike" id="lostTextBtn">Из текста</button>
+    </p>
+    <input type="file" id="restoreFileEarly" hidden accept=".html,text/html">
+    <div id="lostTextBox" hidden>
+      <textarea id="restoreTextEarly" rows="3" placeholder="05.08, 15:04 · #тело&#10;Тяжесть в плечах&#10;После: совещание"></textarea>
+      <button class="btn ghost" id="restoreTextEarlyBtn">Восстановить из текста</button>
+    </div>
   </section>
 
   <!-- Конверт — сразу после первой записи. Дело уже сделано, и теперь
@@ -1306,25 +1314,6 @@
 
     <button class="btn ghost" id="vstrechaDone">Закрыть встречу</button>
   </section>
-
-  <!-- Стоит между карточкой подготовки и экраном записи нарочно: попавший
-       в значок либо не прошёл вход (видит стартовый экран), либо прошёл его
-       заново (видит экран записи). Строчка нужна в обоих состояниях, поэтому
-       живёт снаружи обеих.
-
-       17.08 переписана целиком. Прежняя начиналась словами «Открыто с
-       главного экрана, а записей нет?» и стояла глиной — то есть встречала
-       вопросом о пропаже. А показывается она в том числе тому, кто сделал
-       ровно то, что продукт велел: добавил дневник на главный экран ДО первой
-       записи и открыл его впервые. У такого человека ничего не пропадало, и
-       первое, что он читает, — сообщение о потере, которой не было.
-
-       Отличить его от того, кто писал в браузере, нельзя ничем: на айфоне это
-       две разные памяти, и обе пустые выглядят одинаково. Значит чинится не
-       условие, а текст: строчка должна быть верной для обоих. Теперь она
-       начинается с правила («записи лежат там, где сделаны»), а дальше
-       называет оба случая по очереди — и ни одного не пугает. -->
-  <p class="warn spokoyno" id="pwaNote" hidden><b>Записи лежат там, где сделаны.</b> У главного экрана своя память, у браузера своя. Если записей ещё не было — так и должно быть, начинай отсюда. А если они делались в браузере, то они там и целы: открой дневник по своей ссылке в браузере, нажми внизу «Сохранить инструкцию файлом», вернись сюда и загрузи этот файл — <button type="button" class="linklike" id="pwaRestoreBtn">Восстановить их</button>. Вход заново проходить не надо: записи сложатся вместе, дежурные фразы не задвоятся, а конверт останется тот, что запечатан раньше.</p>
 
   <!-- Возврат: то, что человек про себя уже сказал, но не заметил.
        Операция консультации, вынесенная в продукт.
@@ -2406,10 +2395,6 @@
     return KLYUCHI.some(function (k) { return k && adres.indexOf(k) !== -1; });
   }
 
-  // Заход, а не день. Записи в памяти на момент загрузки: если они уже были,
-  // человек пришёл не в первый раз. Отдельного ключа для этого не нужно.
-  var startedWith = 0;
-
   // Карточка «конверт и сигналы» закрывается кнопкой — или сама, когда обе
   // вещи сделаны. Второе нужно восстановившемуся: у него конверт уже
   // запечатан, и просить его заново значит потерять первое описание.
@@ -2677,7 +2662,7 @@
     if (chuzhoy) {
       ["ucheba", "konvert", "napominaniya", "vstrecha", "vozvrat", "progress", "vstrechaQCard",
        "insight", "ask", "slots", "saveBar", "ruleNote", "momentNote",
-       "localNote", "hardNote", "vazhnoBox", "pwaNote", "znachok",
+       "localNote", "hardNote", "vazhnoBox", "znachok",
        "privet", "chtoEto", "shagi", "pageFoot", "pageHeader", "spravkaBox"
       ].forEach(function (id) { document.getElementById(id).hidden = true; });
       return;
@@ -2740,13 +2725,6 @@
       document.getElementById("shagiPodpis").textContent =
         "Шаг " + nomer + " из " + shagi.length + " · " + shagi[nomer - 1];
     }
-
-    // Пустота внутри значка почти всегда означает не потерю, а второе
-    // хранилище: записи лежат в браузере. Считаем по тому, что было на момент
-    // загрузки: значок открылся пустым — строчка нужна весь этот заход.
-    // Человек первым делом проходит вход заново, и по числу записей строчка
-    // исчезала бы ровно в ту минуту, когда она и понадобилась.
-    document.getElementById("pwaNote").hidden = !isStandalone() || startedWith > 0;
 
     // Форма записи открывается сразу после учебной — но не раньше, чем
     // закончится весь вход целиком, а не только первая запись. Раньше здесь
@@ -5759,8 +5737,14 @@
   }
 
   // Потерявший всё видит только стартовый экран — значит вход в восстановление
-  // должен быть там, а не на два тапа вглубь «Моих записей».
-  function openRestore() {
+  // должен быть там, а не на два тапа вглубь «Моих записей». Но «Мои записи»
+  // до первой записи сами скрыты (renderProgress: archive.length === 0), а
+  // значит их restoreFile/restoreText внутри не открыть — .click() на поле
+  // внутри hidden-предка диалог не поднимает ни в одном браузере. На «Первой
+  // записи» (до первой записи, пока archive пуст) поэтому работаем со своей
+  // парой полей — restoreFileEarly и restoreTextEarly, — а после первой
+  // записи ведём в уже развёрнутые «Мои записи», где есть и то и другое разом.
+  function openArchiveRestore() {
     var arch = document.getElementById("archiveBox");
     var rest = document.querySelector("details.restore");
     if (arch) arch.open = true;
@@ -5770,11 +5754,22 @@
     }
   }
 
-  document.getElementById("lostBtn").addEventListener("click", openRestore);
-  document.getElementById("pwaRestoreBtn").addEventListener("click", openRestore);
+  function openRestore() {
+    if (!document.getElementById("progress").hidden) { openArchiveRestore(); return; }
+    document.getElementById("restoreFileEarly").click();
+  }
 
-  document.getElementById("restoreFile").addEventListener("change", function () {
-    var f = this.files && this.files[0];
+  function openRestoreText() {
+    if (!document.getElementById("progress").hidden) { openArchiveRestore(); return; }
+    var box = document.getElementById("lostTextBox");
+    box.hidden = !box.hidden;
+    if (!box.hidden) document.getElementById("restoreTextEarly").focus();
+  }
+
+  document.getElementById("lostFileBtn").addEventListener("click", openRestore);
+  document.getElementById("lostTextBtn").addEventListener("click", openRestoreText);
+
+  function restoreFromFile(f) {
     if (!f) return;
     var reader = new FileReader();
     reader.onload = function () {
@@ -5863,8 +5858,17 @@
       toast(added ? "Восстановлено записей: " + added : "Всё это уже было на месте");
     };
     reader.readAsText(f);
-    this.value = "";
-  });
+  }
+
+  function wireRestoreInput(id) {
+    var input = document.getElementById(id);
+    input.addEventListener("change", function () {
+      restoreFromFile(this.files && this.files[0]);
+      this.value = "";
+    });
+  }
+  wireRestoreInput("restoreFile");
+  wireRestoreInput("restoreFileEarly");
 
   // Разбираем тот же текст, который страница сама отправляет себе.
   var TAG_BY_NAME = {};
@@ -5922,8 +5926,7 @@
     return out;
   }
 
-  document.getElementById("restoreTextBtn").addEventListener("click", function () {
-    var ta = document.getElementById("restoreText");
+  function restoreFromText(ta) {
     var found = parseSent(ta.value);
     if (!found.length) {
       toast("Не нашлось записей. Вставляй сообщения целиком, вместе со строчкой даты");
@@ -5932,7 +5935,15 @@
     var added = mergeEntries(found);
     ta.value = "";
     toast(added ? "Восстановлено записей: " + added : "Всё это уже было на месте");
-  });
+  }
+
+  function wireRestoreText(btnId, taId) {
+    document.getElementById(btnId).addEventListener("click", function () {
+      restoreFromText(document.getElementById(taId));
+    });
+  }
+  wireRestoreText("restoreTextBtn", "restoreText");
+  wireRestoreText("restoreTextEarlyBtn", "restoreTextEarly");
 
   // Заготовка нужна затем, что с чистого листа человек писать не станет,
   // а по трём строчкам — станет. Уходит почтой, как и письмо о поломке:
@@ -6101,9 +6112,6 @@
   // случиться и то и другое — миграция пишет в память, load() читает.
   showStorageWarn();
   showReadWarn();
-  // Сколько записей было на момент загрузки — по этому числу отличается
-  // первый заход от второго (учебная запись не повторяется).
-  startedWith = archive.length;
   loadFinal();
   renderEnvelope();
   renderUcheba();
